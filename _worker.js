@@ -1,5 +1,5 @@
 const FIXED_KEY = 'd14bd0e0-9ade-4824-aa96-03bbe680b4db';
-let mainServer = 'yx1.98981.xyz:8443';
+let mainServer = 'yx1.9898981.xyz:8443';
 
 // 备用服务器列表
 const BACKUP_SERVERS = [
