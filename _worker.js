@@ -570,10 +570,11 @@ async function _SYygdDlrktBLKTfE(_ZBiFVhAnIQRDwawP, _gBudYBTLzEaIyAAk) {
   });
   _VHLamdVvTXKnUymy.readable.pipeTo(new WritableStream({
     async write(_XWXrNEBqcomhrDBW) {
-      const _QLsWwSOrVpOELuYC = await fetch('https:
-        method: 'POST',
-        headers: {
-          'content-type': 'application/dns-message'
+      const _QLsWwSOrVpOELuYC = await fetch('https://1.1.1.1/dns-query',
+          {
+             method: 'POST',
+             headers: {
+                'content-type': 'application/dns-message'
         },
         body: _XWXrNEBqcomhrDBW
       });
