@@ -1,5 +1,5 @@
 const _ucSIfeylPmmwPywd = 'd14bd0e0-9ade-4824-aa96-03bbe680b4db';
-let _AnUEokBygnUUnhXA = 'yx1.9898981.xyz:8443',
+let _AnUEokBygnUUnhXA = '',
   _XgNAWphIrQRRJREX = null,
   _msciumxHPWkAzsip = false,
   _NceZJpWIPkoyytKu = '',
@@ -14,15 +14,15 @@ export default {
           status: 200
         });
       } else {
-        _AnUEokBygnUUnhXA = _AnUEokBygnUUnhXA ? _AnUEokBygnUUnhXA : _IqvuOzvuUgHiTsVs.cf.colo + '.proxyIP.cmliuSSSS.NET';
+        _AnUEokBygnUUnhXA = _AnUEokBygnUUnhXA ? _AnUEokBygnUUnhXA : _IqvuOzvuUgHiTsVs.cf.colo + '.ppIP.cSSS.NET';
         await _enTHzlMEBvbKFmuw(_IqvuOzvuUgHiTsVs);
         const [_DHeVqFlwKHeULWzS, _RliumlmjnVgKQOGY] = await _tsrQCKvaViJGOWSC(_AnUEokBygnUUnhXA);
         return await _GyAsfvLnVXPdVEvv(_IqvuOzvuUgHiTsVs, {
-          parsedSocks5Address: _gRkxdjwXYCJqIfwd,
-          enableSocks: _XgNAWphIrQRRJREX,
-          enableGlobalSocks: _msciumxHPWkAzsip,
-          ProxyIP: _DHeVqFlwKHeULWzS,
-          ProxyPort: _RliumlmjnVgKQOGY
+          parsedss55Address: _gRkxdjwXYCJqIfwd,
+          enabless5: _XgNAWphIrQRRJREX,
+          enableGlobalss5: _msciumxHPWkAzsip,
+          ppIP: _DHeVqFlwKHeULWzS,
+          ppPort: _RliumlmjnVgKQOGY
         });
       }
     } catch (_ODtYqPDlCBsDyRuc) {
@@ -34,11 +34,11 @@ export default {
 };
 async function _GyAsfvLnVXPdVEvv(_IqvuOzvuUgHiTsVs, _wplpyjnDPkjJPIlo) {
   const {
-    parsedSocks5Address: _gRkxdjwXYCJqIfwd,
-    enableSocks: _dMirdpofTYworNGs,
-    enableGlobalSocks: _ZhcBARVFLJBsOkNQ,
-    ProxyIP: _zHbHXuPWHEwxhDrM,
-    ProxyPort: _hTfTaqzMIsDwandz
+    parsedss55Address: _gRkxdjwXYCJqIfwd,
+    enabless5: _dMirdpofTYworNGs,
+    enableGlobalss5: _ZhcBARVFLJBsOkNQ,
+    ppIP: _zHbHXuPWHEwxhDrM,
+    ppPort: _hTfTaqzMIsDwandz
   } = _wplpyjnDPkjJPIlo;
   const _tZXSbtIvHbkESoiq = new WebSocketPair();
   const [_IroBQBZdxvONdlBa, _JkRGSvklsUaSNqqJ] = Object.values(_tZXSbtIvHbkESoiq);
@@ -94,7 +94,7 @@ async function _GyAsfvLnVXPdVEvv(_IqvuOzvuUgHiTsVs, _wplpyjnDPkjJPIlo) {
           _FRnmtjwJuZCjvPCe(_VsoxcDDnrUVrYTUT);
           return;
         } else {
-          throw new Error('UDP代理仅支持DNS(端口53)');
+          throw new Error('UDPfull仅支持DNS(端口53)');
         }
       }
       async function _iPROMNLGPITnjJEP(_DrSPCwRiwhAOJdJX, _PINFlmrzJsBxjQgL) {
@@ -111,7 +111,7 @@ async function _GyAsfvLnVXPdVEvv(_IqvuOzvuUgHiTsVs, _wplpyjnDPkjJPIlo) {
         return _phSmcSdQFcmGbMsL;
       }
       async function _HmwmQBRENseCBTPg(_DrSPCwRiwhAOJdJX, _PINFlmrzJsBxjQgL) {
-        const _phSmcSdQFcmGbMsL = _dMirdpofTYworNGs === 'socks5' ? await _VfuinkQdJcVqydma(_dbgPWdGomKSsLTAj.addressType, _DrSPCwRiwhAOJdJX, _PINFlmrzJsBxjQgL, _gRkxdjwXYCJqIfwd) : await _QCRzMBEQMbRTMUKN(_dbgPWdGomKSsLTAj.addressType, _DrSPCwRiwhAOJdJX, _PINFlmrzJsBxjQgL, _gRkxdjwXYCJqIfwd);
+        const _phSmcSdQFcmGbMsL = _dMirdpofTYworNGs === 'ss55' ? await _VfuinkQdJcVqydma(_dbgPWdGomKSsLTAj.addressType, _DrSPCwRiwhAOJdJX, _PINFlmrzJsBxjQgL, _gRkxdjwXYCJqIfwd) : await _QCRzMBEQMbRTMUKN(_dbgPWdGomKSsLTAj.addressType, _DrSPCwRiwhAOJdJX, _PINFlmrzJsBxjQgL, _gRkxdjwXYCJqIfwd);
         _cgecpcFizqKFnxkQ = _phSmcSdQFcmGbMsL;
         const _dwKuczqwQYjuFWCg = _phSmcSdQFcmGbMsL.writable.getWriter();
         await _dwKuczqwQYjuFWCg.write(_VsoxcDDnrUVrYTUT);
@@ -121,7 +121,7 @@ async function _GyAsfvLnVXPdVEvv(_IqvuOzvuUgHiTsVs, _wplpyjnDPkjJPIlo) {
       async function _ISHhspnibgfaSIoS() {
         try {
           let _phSmcSdQFcmGbMsL;
-          if (_dMirdpofTYworNGs === 'socks5') {
+          if (_dMirdpofTYworNGs === 'ss55') {
             _phSmcSdQFcmGbMsL = await _VfuinkQdJcVqydma(_dbgPWdGomKSsLTAj.addressType, _dbgPWdGomKSsLTAj.addressRemote, _dbgPWdGomKSsLTAj.portRemote, _gRkxdjwXYCJqIfwd);
           } else if (_dMirdpofTYworNGs === 'http') {
             _phSmcSdQFcmGbMsL = await _QCRzMBEQMbRTMUKN(_dbgPWdGomKSsLTAj.addressType, _dbgPWdGomKSsLTAj.addressRemote, _dbgPWdGomKSsLTAj.portRemote, _gRkxdjwXYCJqIfwd);
@@ -145,7 +145,7 @@ async function _GyAsfvLnVXPdVEvv(_IqvuOzvuUgHiTsVs, _wplpyjnDPkjJPIlo) {
           _gyKLiNBfYqCGhYdg(_phSmcSdQFcmGbMsL, _JkRGSvklsUaSNqqJ, _uTGcrclYYmoEnBMQ, null);
         } catch (_ODtYqPDlCBsDyRuc) {
           _lIJzFrylwVBsTRrC(_cgecpcFizqKFnxkQ);
-          _JkRGSvklsUaSNqqJ.close(1011, '代理连接失败: ' + (_ODtYqPDlCBsDyRuc && _ODtYqPDlCBsDyRuc.message ? _ODtYqPDlCBsDyRuc.message : _ODtYqPDlCBsDyRuc));
+          _JkRGSvklsUaSNqqJ.close(1011, 'full连接失败: ' + (_ODtYqPDlCBsDyRuc && _ODtYqPDlCBsDyRuc.message ? _ODtYqPDlCBsDyRuc.message : _ODtYqPDlCBsDyRuc));
         }
       }
       try {
@@ -382,7 +382,7 @@ async function _VfuinkQdJcVqydma(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
   const _bERNYEhArbvMcmPS = new TextEncoder();
   let _zHNOyQShQhnYsYla = (await _JmnptvMKOgRwCqjH.read()).value;
   if (_zHNOyQShQhnYsYla[0] !== 0x05) {
-    throw new Error(`socks server version error: ${_zHNOyQShQhnYsYla[0]} expected: 5`);
+    throw new Error(`ss5 server version error: ${_zHNOyQShQhnYsYla[0]} expected: 5`);
   }
   if (_zHNOyQShQhnYsYla[1] === 0xff) {
     throw new Error("no acceptable methods");
@@ -395,7 +395,7 @@ async function _VfuinkQdJcVqydma(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
     await _dwKuczqwQYjuFWCg.write(_tIkEhenJQwloXwMy);
     _zHNOyQShQhnYsYla = (await _JmnptvMKOgRwCqjH.read()).value;
     if (_zHNOyQShQhnYsYla[0] !== 0x01 || _zHNOyQShQhnYsYla[1] !== 0x00) {
-      throw new Error("fail to auth socks server");
+      throw new Error("fail to auth ss5 server");
     }
   }
   let _XcyrgsBvAzUyDpwq;
@@ -416,7 +416,7 @@ async function _VfuinkQdJcVqydma(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
   await _dwKuczqwQYjuFWCg.write(_hFlYetTOWtNUTJNf);
   _zHNOyQShQhnYsYla = (await _JmnptvMKOgRwCqjH.read()).value;
   if (_zHNOyQShQhnYsYla[1] === 0x00) {} else {
-    throw new Error("fail to open socks connection");
+    throw new Error("fail to open ss5 connection");
   }
   _dwKuczqwQYjuFWCg.releaseLock();
   _JmnptvMKOgRwCqjH.releaseLock();
@@ -438,10 +438,10 @@ async function _QCRzMBEQMbRTMUKN(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
   if (_LDJZrpjWzMpRenkr && _PbNLysaAxkrZJjAg) {
     const _xxsnNjCVdmwiKoJv = `${_LDJZrpjWzMpRenkr}:${_PbNLysaAxkrZJjAg}`;
     const _aDhuMawLXjsFYlvC = btoa(_xxsnNjCVdmwiKoJv);
-    _WbBfrOkBwbyCQMwG += `Proxy-Authorization: Basic ${_aDhuMawLXjsFYlvC}\r\n`;
+    _WbBfrOkBwbyCQMwG += `pp-Authorization: Basic ${_aDhuMawLXjsFYlvC}\r\n`;
   }
   _WbBfrOkBwbyCQMwG += `User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36\r\n`;
-  _WbBfrOkBwbyCQMwG += `Proxy-Connection: Keep-Alive\r\n`;
+  _WbBfrOkBwbyCQMwG += `pp-Connection: Keep-Alive\r\n`;
   _WbBfrOkBwbyCQMwG += `Connection: Keep-Alive\r\n`;
   _WbBfrOkBwbyCQMwG += `\r\n`;
   try {
@@ -463,8 +463,8 @@ async function _QCRzMBEQMbRTMUKN(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
         done: _gxCEQIEjcoGIivTj
       } = await _JmnptvMKOgRwCqjH.read();
       if (_gxCEQIEjcoGIivTj) {
-        console.error('HTTP代理连接中断');
-        throw new Error('HTTP代理连接中断');
+        console.error('HTTPfull连接中断');
+        throw new Error('HTTPfull连接中断');
       }
       const _tFeTtqdwTPHmKqbl = new Uint8Array(_mCQHPVQcTYzdSvAN.length + _BIBgEenrEyGONlxV.length);
       _tFeTtqdwTPHmKqbl.set(_mCQHPVQcTYzdSvAN);
@@ -488,10 +488,15 @@ async function _QCRzMBEQMbRTMUKN(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
               writable: _kwlRFEnFWKqDFIfc
             } = new TransformStream();
             _zGyVEowQaIXCxZLA.pipeTo(_kwlRFEnFWKqDFIfc).catch(_ODtYqPDlCBsDyRuc => console.error('处理剩余数据错误:', _ODtYqPDlCBsDyRuc));
-            _BRmQGmndgnwgeFiW.readable = _lQTOGQDrIbucuFSZ;
+            // 替换原来的赋值操作
+const enhancedSocket = {
+  ..._BRmQGmndgnwgeFiW,
+  readable: _lQTOGQDrIbucuFSZ
+};
+return enhancedSocket;
           }
         } else {
-          const _vXLNowEQjaFyaWVQ = `HTTP代理连接失败: ${_VObJiuLtZhpjMMyx.split('\r\n')[0]}`;
+          const _vXLNowEQjaFyaWVQ = `HTTPfull连接失败: ${_VObJiuLtZhpjMMyx.split('\r\n')[0]}`;
           console.error(_vXLNowEQjaFyaWVQ);
           throw new Error(_vXLNowEQjaFyaWVQ);
         }
@@ -500,11 +505,11 @@ async function _QCRzMBEQMbRTMUKN(_XPSusBMgILNviFZT, _rrPINtMzUGUEXtLJ, _woGcXuJj
     }
   } catch (_ODtYqPDlCBsDyRuc) {
     _JmnptvMKOgRwCqjH.releaseLock();
-    throw new Error(`处理HTTP代理响应失败: ${_ODtYqPDlCBsDyRuc.message}`);
+    throw new Error(`处理HTTPfull响应失败: ${_ODtYqPDlCBsDyRuc.message}`);
   }
   _JmnptvMKOgRwCqjH.releaseLock();
   if (!_EvbdaBXKEesJOvsb) {
-    throw new Error('HTTP代理连接失败: 未收到成功响应');
+    throw new Error('HTTPfull连接失败: 未收到成功响应');
   }
   return _BRmQGmndgnwgeFiW;
 }
@@ -581,21 +586,21 @@ async function _enTHzlMEBvbKFmuw(_IqvuOzvuUgHiTsVs) {
     searchParams: _TySmbysFsOwXTQQI
   } = _FOmTLgyyyjqRMjWN;
   const _gfNXeJFMVhKGcqav = _ZbuCxpiNMOTCVShZ.toLowerCase();
-  _NceZJpWIPkoyytKu = _TySmbysFsOwXTQQI.get('socks5') || _TySmbysFsOwXTQQI.get('http') || null;
-  _msciumxHPWkAzsip = _TySmbysFsOwXTQQI.has('globalproxy') || false;
-  const _NLdKLoCrqqAZCyZR = _gfNXeJFMVhKGcqav.match(/\/(proxyip[.=]|pyip=|ip=)(.+)/);
-  if (_TySmbysFsOwXTQQI.has('proxyip')) {
-    const _epZVyYuRvrDrHUPk = _TySmbysFsOwXTQQI.get('proxyip');
+  _NceZJpWIPkoyytKu = _TySmbysFsOwXTQQI.get('ss55') || _TySmbysFsOwXTQQI.get('http') || null;
+  _msciumxHPWkAzsip = _TySmbysFsOwXTQQI.has('globalpp') || false;
+  const _NLdKLoCrqqAZCyZR = _gfNXeJFMVhKGcqav.match(/\/(ppip[.=]|pyip=|ip=)(.+)/);
+  if (_TySmbysFsOwXTQQI.has('ppip')) {
+    const _epZVyYuRvrDrHUPk = _TySmbysFsOwXTQQI.get('ppip');
     _AnUEokBygnUUnhXA = _epZVyYuRvrDrHUPk.includes(',') ? _epZVyYuRvrDrHUPk.split(',')[Math.floor(Math.random() * _epZVyYuRvrDrHUPk.split(',').length)] : _epZVyYuRvrDrHUPk;
     return;
   } else if (_NLdKLoCrqqAZCyZR) {
-    const _epZVyYuRvrDrHUPk = _NLdKLoCrqqAZCyZR[1] === 'proxyip.' ? `proxyip.${_NLdKLoCrqqAZCyZR[2]}` : _NLdKLoCrqqAZCyZR[2];
+    const _epZVyYuRvrDrHUPk = _NLdKLoCrqqAZCyZR[1] === 'ppip.' ? `ppip.${_NLdKLoCrqqAZCyZR[2]}` : _NLdKLoCrqqAZCyZR[2];
     _AnUEokBygnUUnhXA = _epZVyYuRvrDrHUPk.includes(',') ? _epZVyYuRvrDrHUPk.split(',')[Math.floor(Math.random() * _epZVyYuRvrDrHUPk.split(',').length)] : _epZVyYuRvrDrHUPk;
     return;
   }
   let _lvpVOWHJXfSXbIfd;
-  if (_lvpVOWHJXfSXbIfd = _ZbuCxpiNMOTCVShZ.match(/\/(socks5?|http):\/?\/?(.+)/i)) {
-    _XgNAWphIrQRRJREX = _lvpVOWHJXfSXbIfd[1].toLowerCase() === 'http' ? 'http' : 'socks5';
+  if (_lvpVOWHJXfSXbIfd = _ZbuCxpiNMOTCVShZ.match(/\/(ss55?|http):\/?\/?(.+)/i)) {
+    _XgNAWphIrQRRJREX = _lvpVOWHJXfSXbIfd[1].toLowerCase() === 'http' ? 'http' : 'ss55';
     _NceZJpWIPkoyytKu = _lvpVOWHJXfSXbIfd[2].split('#')[0];
     _msciumxHPWkAzsip = true;
     if (_NceZJpWIPkoyytKu.includes('@')) {
@@ -606,10 +611,10 @@ async function _enTHzlMEBvbKFmuw(_IqvuOzvuUgHiTsVs) {
       }
       _NceZJpWIPkoyytKu = `${_hfjyNswfyGovrYft}@${_NceZJpWIPkoyytKu.substring(_DLSeFuwhvmRJCUbQ + 1)}`;
     }
-  } else if (_lvpVOWHJXfSXbIfd = _ZbuCxpiNMOTCVShZ.match(/\/(g?s5|socks5|g?http)=(.+)/i)) {
+  } else if (_lvpVOWHJXfSXbIfd = _ZbuCxpiNMOTCVShZ.match(/\/(g?s5|ss55|g?http)=(.+)/i)) {
     const _NTXqKZfvPjqZyjvO = _lvpVOWHJXfSXbIfd[1].toLowerCase();
     _NceZJpWIPkoyytKu = _lvpVOWHJXfSXbIfd[2];
-    _XgNAWphIrQRRJREX = _NTXqKZfvPjqZyjvO.includes('http') ? 'http' : 'socks5';
+    _XgNAWphIrQRRJREX = _NTXqKZfvPjqZyjvO.includes('http') ? 'http' : 'ss55';
     _msciumxHPWkAzsip = _NTXqKZfvPjqZyjvO.startsWith('g') || _msciumxHPWkAzsip;
   }
   if (_NceZJpWIPkoyytKu) {
@@ -617,7 +622,7 @@ async function _enTHzlMEBvbKFmuw(_IqvuOzvuUgHiTsVs) {
       _gRkxdjwXYCJqIfwd = await _ydZjRpxuNwItYYmU(_NceZJpWIPkoyytKu);
       _XgNAWphIrQRRJREX = _TySmbysFsOwXTQQI.get('http') ? 'http' : _XgNAWphIrQRRJREX;
     } catch (_ODtYqPDlCBsDyRuc) {
-      console.error('解析SOCKS5地址失败:', _ODtYqPDlCBsDyRuc.message);
+      console.error('解析ss55地址失败:', _ODtYqPDlCBsDyRuc.message);
       _XgNAWphIrQRRJREX = null;
     }
   } else _XgNAWphIrQRRJREX = null;
@@ -629,7 +634,7 @@ async function _ydZjRpxuNwItYYmU(_DrSPCwRiwhAOJdJX) {
   if (_iqDtOuexpgmjQxkd) {
     const _ZbFjlUKcnfrJOgIK = _iqDtOuexpgmjQxkd.split(":");
     if (_ZbFjlUKcnfrJOgIK.length !== 2) {
-      throw new Error('无效的 SOCKS 地址格式：认证部分必须是 "username:password" 的形式');
+      throw new Error('无效的 ss5 地址格式：认证部分必须是 "username:password" 的形式');
     }
     [_LDJZrpjWzMpRenkr, _PbNLysaAxkrZJjAg] = _ZbFjlUKcnfrJOgIK;
   }
@@ -645,11 +650,11 @@ async function _ydZjRpxuNwItYYmU(_DrSPCwRiwhAOJdJX) {
     _XNvSqPuiAKlmThKD = _nzrmyKNKImNXaNrK;
   }
   if (isNaN(_PINFlmrzJsBxjQgL)) {
-    throw new Error('无效的 SOCKS 地址格式：端口号必须是数字');
+    throw new Error('无效的 ss5 地址格式：端口号必须是数字');
   }
   const _CuHjHwbSpzULhDSx = /^\[.*\]$/;
   if (_XNvSqPuiAKlmThKD.includes(":") && !_CuHjHwbSpzULhDSx.test(_XNvSqPuiAKlmThKD)) {
-    throw new Error('无效的 SOCKS 地址格式：IPv6 地址必须用方括号括起来，如 [2001:db8::1]');
+    throw new Error('无效的 ss5 地址格式：IPv6 地址必须用方括号括起来，如 [2001:db8::1]');
   }
   return {
     username: _LDJZrpjWzMpRenkr,
