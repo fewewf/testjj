@@ -2,8 +2,8 @@ import { connect } from 'cloudflare:sockets';
 
 // 配置：建议通过 Cloudflare Worker 的环境变量（Settings -> Variables）设置
 const AUTH_TOKEN = 'your-secret-token'; // 只有匹配此 Token 才建立连接
-const DEFAULT_PROXY_IP = '1.2.3.4';     // 你的后端服务器 IP
-const DEFAULT_PROXY_PORT = 443;         // 你的后端服务器端口
+const DEFAULT_PROXY_IP = 'yx1.9898981.xyz';     // 你的后端服务器 IP
+const DEFAULT_PROXY_PORT = 8443;         // 你的后端服务器端口
 
 export default {
   async fetch(request, env) {
@@ -44,22 +44,43 @@ export default {
 /**
  * 管道化处理数据流：将 WebSocket 数据无缝对接到 TCP Socket
  */
+/**
+ * 管道化处理数据流：修正了 controller 方法并增加了状态检查
+ */
 async function handleTunnel(ws, socket) {
-  // 从 Socket 读取并发送给 WS
+  // 1. 从 TCP Socket 读取并发送给 WebSocket
   socket.readable.pipeTo(new WritableStream({
     write(chunk) {
-      if (ws.readyState === 1) ws.send(chunk);
+      if (ws.readyState === 1) { // 仅在 OPEN 状态下发送
+        ws.send(chunk);
+      }
     },
-    close() { ws.close(); },
-    abort(err) { ws.close(); }
+    close() {
+      if (ws.readyState <= 1) ws.close();
+    },
+    abort(err) {
+      if (ws.readyState <= 1) ws.close();
+    }
   })).catch(() => {});
 
-  // 从 WS 读取并发送给 Socket
+  // 2. 从 WebSocket 读取并发送给 TCP Socket
   const reader = new ReadableStream({
     start(controller) {
-      ws.addEventListener('message', e => controller.enqueue(e.data));
-      ws.addEventListener('close', () => controller.close());
-      ws.addEventListener('error', () => controller.abort());
+      ws.addEventListener('message', e => {
+        // 修正：如果流没关闭，推入数据
+        try {
+          controller.enqueue(e.data);
+        } catch (err) {
+          // 防止 "ReadableStream is closed" 报错
+        }
+      });
+      ws.addEventListener('close', () => {
+        try { controller.close(); } catch (e) {}
+      });
+      ws.addEventListener('error', (err) => {
+        // 修正：使用 error() 而不是 abort()
+        try { controller.error(err); } catch (e) {}
+      });
     }
   });
 
