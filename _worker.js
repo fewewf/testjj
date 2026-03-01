@@ -109,9 +109,8 @@ remoteSocket = result.socket;
 
         // 发送首包（0-RTT）
         if (rawData.length) {
-          const writer = remoteSocket.writable.getWriter();
-          await writer.write(rawData);
-          writer.releaseLock();
+          // 后续数据由 pipeWS2TCP 接管
+         return;
         }
 
         return;
