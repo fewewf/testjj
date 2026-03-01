@@ -112,7 +112,7 @@ remoteSocket = result.socket;
           const writer = remoteSocket.writable.getWriter();
           await writer.write(rawData);
           writer.releaseLock();
-         }
+         
         }
 
         return;
