@@ -4,8 +4,8 @@ const SECRET_PATH = '/tunnel-vip-2026/auth-888999';
 const UUID = '56892533-7dad-475a-b0e8-51040d0d04ad';
 
 // 如果你确定不需要代理，可以将 PROXY_HOST 设为 null
-const PROXY_HOST = 'yx1.9898981.xyz';
-const PROXY_PORT = 8443;
+const PROXY_HOST = 'ProxyIP.FR.CMLiussss.net';
+const PROXY_PORT = 443;
 
 export default {
   async fetch(request) {
