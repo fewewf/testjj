@@ -226,5 +226,21 @@ function pipeTCP2WS(ws, socket) {
 }
 
 function pipeWS2TCP(ws, socket) {
-  // 保持引用即可（避免 GC）
+
+  const writer = socket.writable.getWriter();
+
+  ws.addEventListener("message", async (event) => {
+    try {
+      if (ws.readyState !== 1) return;
+
+      await writer.write(new Uint8Array(event.data));
+    } catch {
+      try { writer.close(); } catch {}
+      ws.close();
+    }
+  });
+
+  ws.addEventListener("close", () => {
+    try { writer.close(); } catch {}
+  });
 }
