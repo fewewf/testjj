@@ -1,20 +1,19 @@
 import { connect } from 'cloudflare:sockets';
 
-const UUID = '9d4f89db-17bf-4158-9e0b-fe82dfeafa94';
 const PROXY_IP = 'yx1.98981.xyz:8443'; 
 
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     const upgradeHeader = request.headers.get('Upgrade');
     if (upgradeHeader !== 'websocket') {
-      return new Response('System Operational', { status: 200 });
+      return new Response('System Running', { status: 200 });
     }
 
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
 
-    // 关键修复：确保异步任务被正确触发且不影响主线程返回
-    handleWebSocket(server);
+    // 关键修复：使用 ctx.waitUntil 延长 Worker 生命周期
+    ctx.waitUntil(handleWebSocket(server));
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -24,26 +23,24 @@ async function handleWebSocket(ws) {
   let remoteConn = null;
   let isFirstPacket = true;
 
-  ws.addEventListener('message', async ({ data }) => {
+  // 使用 Promise 处理首次握手，防止逻辑悬挂
+  const processMessage = async (data) => {
     try {
       if (isFirstPacket) {
-        // 解析 VLESS
         const vlessHeader = parseVlessHeader(new Uint8Array(data));
-        if (!vlessHeader.address) {
-          ws.close();
-          return;
-        }
+        if (!vlessHeader.address) return ws.close();
 
-        // 尝试连接
+        // 尝试连接目标
         try {
           remoteConn = connect({ hostname: vlessHeader.address, port: vlessHeader.port });
           await remoteConn.opened;
         } catch (e) {
-          // Fallback
+          // Fallback 到代理
           remoteConn = await connectViaProxy(vlessHeader.address, vlessHeader.port);
         }
 
         if (remoteConn) {
+          // 异步启动双向转发
           relayData(ws, remoteConn);
           const writer = remoteConn.writable.getWriter();
           await writer.write(data.slice(vlessHeader.headerLength));
@@ -58,10 +55,14 @@ async function handleWebSocket(ws) {
     } catch (err) {
       ws.close();
     }
+  };
+
+  ws.addEventListener('message', (event) => {
+    processMessage(event.data);
   });
 
   ws.addEventListener('close', () => {
-    if (remoteConn) remoteConn.close();
+    remoteConn?.close();
   });
 }
 
@@ -76,8 +77,9 @@ async function connectViaProxy(targetHost, targetPort) {
     await writer.write(new TextEncoder().encode(connectHeader));
     writer.releaseLock();
 
+    // 读取响应头，直到发现双换行
     const reader = proxy.readable.getReader();
-    await reader.read(); // 跳过响应
+    await reader.read(); 
     reader.releaseLock();
 
     return proxy;
@@ -107,7 +109,6 @@ async function relayData(ws, socket) {
 
 function parseVlessHeader(buffer) {
   if (buffer.length < 24) return {};
-  // 核心逻辑：直接从端口位置开始计算
   const addonLen = buffer[17];
   const addressIndex = 17 + 1 + addonLen + 1;
   const port = (buffer[addressIndex] << 8) | buffer[addressIndex + 1];
@@ -123,8 +124,6 @@ function parseVlessHeader(buffer) {
     const domainLen = buffer[addressEndIndex];
     address = new TextDecoder().decode(buffer.slice(addressEndIndex + 1, addressEndIndex + 1 + domainLen));
     addressEndIndex += 1 + domainLen;
-  } else if (addressType === 3) {
-    addressEndIndex += 16;
   }
 
   return { address, port, headerLength: addressEndIndex };
