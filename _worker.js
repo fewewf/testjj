@@ -4,127 +4,116 @@ const PROXY_IP = 'yx1.98981.xyz:8443';
 
 export default {
   async fetch(request, env, ctx) {
-    const upgradeHeader = request.headers.get('Upgrade');
-    if (upgradeHeader !== 'websocket') {
-      return new Response('System Running', { status: 200 });
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Worker is running', { status: 200 });
     }
 
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
 
-    // 关键修复：使用 ctx.waitUntil 延长 Worker 生命周期
-    ctx.waitUntil(handleWebSocket(server));
+    // ctx.waitUntil 确保异步转发不会被提前掐断
+    ctx.waitUntil(this.handleWebSocket(server));
 
     return new Response(null, { status: 101, webSocket: client });
+  },
+
+  async handleWebSocket(ws) {
+    let remoteConn = null;
+
+    const onClose = () => {
+      try { remoteConn?.close(); } catch (e) {}
+      try { ws.close(); } catch (e) {}
+    };
+
+    ws.addEventListener('close', onClose);
+    ws.addEventListener('error', onClose);
+
+    // 处理首包和后续转发
+    const reader = new ArrayBufferReader(ws);
+    
+    try {
+      const firstPacket = await reader.readNext();
+      if (!firstPacket) return onClose();
+
+      const vless = this.parseVless(new Uint8Array(firstPacket));
+      if (!vless) return onClose();
+
+      // 尝试直连 (带 5 秒超时)
+      try {
+        remoteConn = connect({ hostname: vless.address, port: vless.port });
+        await Promise.race([
+          remoteConn.opened,
+          new Promise((_, reject) => setTimeout(() => reject('Timeout'), 5000))
+        ]);
+      } catch (e) {
+        // 失败则 Fallback 到 Proxy
+        remoteConn = await this.connectProxy(vless.address, vless.port);
+      }
+
+      if (!remoteConn) return onClose();
+
+      // 发送首包余下的数据
+      const writer = remoteConn.writable.getWriter();
+      await writer.write(firstPacket.slice(vless.offset));
+      writer.releaseLock();
+
+      // 极简双向流转发 (避免挂起的核心)
+      const socketToWs = remoteConn.readable.pipeTo(new WritableStream({
+        write(chunk) { if (ws.readyState === 1) ws.send(chunk); },
+        close() { onClose(); }
+      }));
+
+      const wsToSocket = new ReadableStream({
+        start(controller) {
+          ws.addEventListener('message', e => controller.enqueue(e.data));
+          ws.addEventListener('close', () => controller.close());
+        }
+      }).pipeTo(remoteConn.writable);
+
+      await Promise.all([socketToWs, wsToSocket]);
+
+    } catch (e) {
+      onClose();
+    }
+  },
+
+  async connectProxy(host, port) {
+    try {
+      const [pHost, pPort] = PROXY_IP.split(':');
+      const proxy = connect({ hostname: pHost, port: parseInt(pPort) });
+      const writer = proxy.writable.getWriter();
+      await writer.write(new TextEncoder().encode(`CONNECT ${host}:${port} HTTP/1.1\r\nHost: ${host}:${port}\r\n\r\n`));
+      writer.releaseLock();
+      return proxy;
+    } catch (e) { return null; }
+  },
+
+  parseVless(buffer) {
+    try {
+      const addonLen = buffer[17];
+      const addressIndex = 18 + addonLen;
+      const port = (buffer[addressIndex + 1] << 8) | buffer[addressIndex + 2];
+      const type = buffer[addressIndex + 3];
+      let address = "", offset = addressIndex + 4;
+      if (type === 1) { address = buffer.slice(offset, offset + 4).join('.'); offset += 4; }
+      else if (type === 2) { 
+        const len = buffer[offset]; 
+        address = new TextDecoder().decode(buffer.slice(offset + 1, offset + 1 + len)); 
+        offset += 1 + len; 
+      }
+      return { address, port, offset };
+    } catch (e) { return null; }
   }
 };
 
-async function handleWebSocket(ws) {
-  let remoteConn = null;
-  let isFirstPacket = true;
-
-  // 使用 Promise 处理首次握手，防止逻辑悬挂
-  const processMessage = async (data) => {
-    try {
-      if (isFirstPacket) {
-        const vlessHeader = parseVlessHeader(new Uint8Array(data));
-        if (!vlessHeader.address) return ws.close();
-
-        // 尝试连接目标
-        try {
-          remoteConn = connect({ hostname: vlessHeader.address, port: vlessHeader.port });
-          await remoteConn.opened;
-        } catch (e) {
-          // Fallback 到代理
-          remoteConn = await connectViaProxy(vlessHeader.address, vlessHeader.port);
-        }
-
-        if (remoteConn) {
-          // 异步启动双向转发
-          relayData(ws, remoteConn);
-          const writer = remoteConn.writable.getWriter();
-          await writer.write(data.slice(vlessHeader.headerLength));
-          writer.releaseLock();
-        }
-        isFirstPacket = false;
-      } else if (remoteConn) {
-        const writer = remoteConn.writable.getWriter();
-        await writer.write(data);
-        writer.releaseLock();
-      }
-    } catch (err) {
-      ws.close();
-    }
-  };
-
-  ws.addEventListener('message', (event) => {
-    processMessage(event.data);
-  });
-
-  ws.addEventListener('close', () => {
-    remoteConn?.close();
-  });
-}
-
-async function connectViaProxy(targetHost, targetPort) {
-  try {
-    const [pHost, pPort] = PROXY_IP.split(':');
-    const proxy = connect({ hostname: pHost, port: parseInt(pPort) });
-    await proxy.opened;
-
-    const connectHeader = `CONNECT ${targetHost}:${targetPort} HTTP/1.1\r\nHost: ${targetHost}:${targetPort}\r\n\r\n`;
-    const writer = proxy.writable.getWriter();
-    await writer.write(new TextEncoder().encode(connectHeader));
-    writer.releaseLock();
-
-    // 读取响应头，直到发现双换行
-    const reader = proxy.readable.getReader();
-    await reader.read(); 
-    reader.releaseLock();
-
-    return proxy;
-  } catch (e) {
-    return null;
+// 辅助类：处理 WebSocket 消息读取
+class ArrayBufferReader {
+  constructor(ws) {
+    this.ws = ws;
+    this.resolve = null;
+    ws.addEventListener('message', e => this.resolve?.(e.data), { once: true });
   }
-}
-
-async function relayData(ws, socket) {
-  const reader = socket.readable.getReader();
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      if (ws.readyState === 1) {
-        ws.send(value);
-      } else {
-        break;
-      }
-    }
-  } catch (e) {
-  } finally {
-    reader.releaseLock();
-    ws.close();
+  readNext() {
+    return new Promise(res => { this.resolve = res; });
   }
-}
-
-function parseVlessHeader(buffer) {
-  if (buffer.length < 24) return {};
-  const addonLen = buffer[17];
-  const addressIndex = 17 + 1 + addonLen + 1;
-  const port = (buffer[addressIndex] << 8) | buffer[addressIndex + 1];
-  const addressType = buffer[addressIndex + 2];
-  
-  let address = "";
-  let addressEndIndex = addressIndex + 3;
-
-  if (addressType === 1) {
-    address = buffer.slice(addressEndIndex, addressEndIndex + 4).join('.');
-    addressEndIndex += 4;
-  } else if (addressType === 2) {
-    const domainLen = buffer[addressEndIndex];
-    address = new TextDecoder().decode(buffer.slice(addressEndIndex + 1, addressEndIndex + 1 + domainLen));
-    addressEndIndex += 1 + domainLen;
-  }
-
-  return { address, port, headerLength: addressEndIndex };
 }
