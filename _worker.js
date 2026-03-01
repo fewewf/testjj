@@ -1,8 +1,8 @@
 import { connect } from 'cloudflare:sockets';
 
 const AUTH_TOKEN = 'your-secret-token';
-const DEFAULT_PROXY_IP = 'yx1.98981.xyz'; 
-const DEFAULT_PROXY_PORT = 8443;
+const DEFAULT_PROXY_IP = '8.8.8.8'; 
+const DEFAULT_PROXY_PORT = 53;
 
 export default {
   async fetch(request, env) {
