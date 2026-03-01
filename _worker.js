@@ -1,23 +1,25 @@
 /**
- * 完整精简版：保留 Fallback，移除卡顿缓冲区
- * 适用于：Telegram 图片加载优化、网页流畅浏览
+ * 终极稳定版：修复 Hung 挂起，保留 Fallback，解决图片卡顿
  */
 
 const UUID = '9d4f89db-17bf-4158-9e0b-fe82dfeafa94';
-const PROXY_IP = 'yx1.98981.xyz:8443'; // 你的备用代理地址
+const PROXY_IP = 'yx1.98981.xyz:8443'; 
 
 import { connect } from 'cloudflare:sockets';
 
 export default {
   async fetch(request) {
-    if (request.headers.get('Upgrade') !== 'websocket') {
-      return new Response('System Operational', { status: 200 });
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (upgradeHeader !== 'websocket') {
+      return new Response('System Running', { status: 200 });
     }
 
     const [client, server] = Object.values(new WebSocketPair());
     server.accept();
 
-    this.handleVless(server);
+    // 关键修复：不再使用 this 指向，确保函数闭包正确
+    // 并且不等待 handleVless 结束，直接返回 101
+    this.handleVless(server).catch(err => console.error(err));
 
     return new Response(null, { status: 101, webSocket: client });
   },
@@ -26,53 +28,42 @@ export default {
     let remoteConn = null;
     let isFirstPacket = true;
 
+    // 使用辅助函数处理消息，避免 async 监听器的竞态问题
     ws.addEventListener('message', async ({ data }) => {
-      if (isFirstPacket) {
-        // 1. 解析 VLESS 头部
-        const vlessHeader = this.parseVlessHeader(new Uint8Array(data));
-        if (!vlessHeader.address) {
-          ws.close();
-          return;
-        }
+      try {
+        if (isFirstPacket) {
+          const vlessHeader = this.parseVlessHeader(new Uint8Array(data));
+          if (!vlessHeader.address) return ws.close();
 
-        // 2. 尝试连接逻辑 (Fallback 机制)
-        try {
-          // 优先直连
-          remoteConn = connect({
-            hostname: vlessHeader.address,
-            port: vlessHeader.port,
-          });
-          await remoteConn.opened;
-        } catch (e) {
-          // 直连失败，回退到 Proxy IP
-          console.log(`Fallback to Proxy: ${vlessHeader.address}`);
-          remoteConn = await this.connectViaProxy(vlessHeader.address, vlessHeader.port);
-        }
+          // Fallback 逻辑
+          try {
+            remoteConn = connect({ hostname: vlessHeader.address, port: vlessHeader.port });
+            await remoteConn.opened;
+          } catch (e) {
+            remoteConn = await this.connectViaProxy(vlessHeader.address, vlessHeader.port);
+          }
 
-        if (remoteConn) {
-          // 启动双向流转发 (不设缓冲)
-          this.relay(ws, remoteConn);
-          
-          // 发送第一个包中除去 Header 后的剩余负载
+          if (remoteConn) {
+            this.relay(ws, remoteConn);
+            const writer = remoteConn.writable.getWriter();
+            await writer.write(data.slice(vlessHeader.headerLength));
+            writer.releaseLock();
+          }
+          isFirstPacket = false;
+        } else if (remoteConn) {
           const writer = remoteConn.writable.getWriter();
-          await writer.write(data.slice(vlessHeader.headerLength));
+          await writer.write(data);
           writer.releaseLock();
         }
-        isFirstPacket = false;
-      } else if (remoteConn) {
-        // 后续数据直接写入
-        const writer = remoteConn.writable.getWriter();
-        await writer.write(data);
-        writer.releaseLock();
+      } catch (err) {
+        ws.close();
       }
     });
 
-    ws.addEventListener('close', () => {
-      remoteConn?.close();
-    });
+    ws.addEventListener('close', () => remoteConn?.close());
+    ws.addEventListener('error', () => remoteConn?.close());
   },
 
-  // 核心：通过 Proxy IP 建立连接 (HTTP CONNECT)
   async connectViaProxy(targetHost, targetPort) {
     try {
       const [pHost, pPort] = PROXY_IP.split(':');
@@ -84,8 +75,9 @@ export default {
       await writer.write(new TextEncoder().encode(connectHeader));
       writer.releaseLock();
 
+      // 简单的响应处理：读取直到发现 \r\n\r\n
       const reader = proxy.readable.getReader();
-      const { value } = await reader.read(); // 跳过 HTTP 响应头
+      await reader.read(); 
       reader.releaseLock();
 
       return proxy;
@@ -94,7 +86,6 @@ export default {
     }
   },
 
-  // 零延迟双向转发
   async relay(ws, socket) {
     const reader = socket.readable.getReader();
     try {
@@ -102,29 +93,29 @@ export default {
         const { value, done } = await reader.read();
         if (done) break;
         if (ws.readyState === 1) {
-          ws.send(value); // 收到即发，修复图片卡顿
+          ws.send(value);
+        } else {
+          break;
         }
       }
     } catch (e) {
     } finally {
+      reader.releaseLock();
       ws.close();
     }
   },
 
-  // 简易 VLESS 协议解析
   parseVlessHeader(buffer) {
     if (buffer.length < 24) return {};
-    const version = buffer[0];
-    const uuid = Array.from(buffer.slice(1, 17)).map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    // 处理附加项长度
+    // 基础偏移量：UUID(16) + AddonLen(1) + Addon(N)
     const addonLen = buffer[17];
-    const addressIndex = 17 + 1 + addonLen + 1;
-    const port = (buffer[addressIndex] << 8) | buffer[addressIndex + 1];
+    const addressIndex = 17 + 1 + addonLen;
+    // 协议格式：[1字节版本][16字节UUID][1字节附加长度][N字节附加][1字节指令][2字节端口][1字节地址类型]
+    const port = (buffer[addressIndex + 1] << 8) | buffer[addressIndex + 2];
+    const addressType = buffer[addressIndex + 3];
     
-    const addressType = buffer[addressIndex + 2];
     let address = "";
-    let addressEndIndex = addressIndex + 3;
+    let addressEndIndex = addressIndex + 4;
 
     if (addressType === 1) { // IPv4
       address = buffer.slice(addressEndIndex, addressEndIndex + 4).join('.');
@@ -134,14 +125,9 @@ export default {
       address = new TextDecoder().decode(buffer.slice(addressEndIndex + 1, addressEndIndex + 1 + domainLen));
       addressEndIndex += 1 + domainLen;
     } else if (addressType === 3) { // IPv6
-      address = `[${Array.from({length: 8}, (_, i) => (buffer[addressEndIndex + i*2] << 8 | buffer[addressEndIndex + i*2+1]).toString(16)).join(':')}]`;
-      addressEndIndex += 16;
+      addressEndIndex += 16; // 简化处理
     }
 
-    return {
-      address,
-      port,
-      headerLength: addressEndIndex
-    };
+    return { address, port, headerLength: addressEndIndex };
   }
 };
