@@ -141,15 +141,16 @@ async function pipeRemoteToWebSocket(remoteSocket, ws, vlessHeader) {
             if (ws.readyState !== WS_READY_STATE_OPEN) break;
 
             if (!headerSent) {
-                // 关键修复：确保 VLESS 响应头作为独立包或严格的首包发送
-                const combined = new Uint8Array(vlessHeader.byteLength + value.byteLength);
-                combined.set(vlessHeader, 0);
-                combined.set(value, vlessHeader.byteLength);
+                // --- 修复关键点：分开两次 send，确保协议栈完全识别 ---
+                // 第一步：发送 VLESS 协议响应头 (0, 0)
+                ws.send(vlessHeader);
                 
-                ws.send(combined);
+                // 第二步：紧接着发送真实的远程数据 (TLS 握手包)
+                ws.send(value);
+                
                 headerSent = true;
             } else {
-                // 后续流量直接透传，不做任何缓存合并，防止破坏 SSL 特征
+                // 后续数据保持原样，不做任何处理
                 ws.send(value);
             }
         }
@@ -157,7 +158,10 @@ async function pipeRemoteToWebSocket(remoteSocket, ws, vlessHeader) {
         console.error("Remote read error:", e);
     } finally {
         reader.releaseLock();
-        if (ws.readyState === WS_READY_STATE_OPEN) ws.close();
+        // 增加延迟关闭，防止最后的数据包还没发完连接就断了
+        setTimeout(() => {
+            if (ws.readyState === WS_READY_STATE_OPEN) ws.close();
+        }, 1000);
     }
 }
 
