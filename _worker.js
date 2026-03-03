@@ -1,198 +1,216 @@
 import { connect } from 'cloudflare:sockets';
 
-// ===== 配置区 =====
+// --- [配置区] ---
 const SECRET_PATH = '/tunnel-vip-2026/auth-888999';
-const UUID = '56892533-7dad-475a-b0e8-51040d0d04ad';
-const PROXY_HOST = 'ProxyIP.FR.CMLiussss.net';
+const FIXED_UUID = '56892533-7dad-475a-b0e8-51040d0d04ad';
+const PROXY_IP = 'ProxyIP.FR.CMLiussss.net'; // 反代IP
 const PROXY_PORT = 443;
 
-const CONNECT_TIMEOUT = 10000;
-const FIRST_PACKET_TIMEOUT = 3000;
-const MAX_RETRY = 4;
-const BASE_DELAY = 300;
-const MAX_CHUNK = 64 * 1024; // 64KB
+// --- [伪装内容] ---
+const ROBOT_HTML = `<!DOCTYPE html><html><head><title>Edge Tech Services</title></head><body style="font-family:sans-serif;padding:40px;"><h1>404 Not Found</h1><p>The requested resource was not found on this edge node.</p></body></html>`;
+const MOCK_API = { status: "healthy", node: "cf-global-edge", version: "2.0.1", region: "auto" };
 
-// ===== 伪装 =====
-const ROBOT_HTML = `<!DOCTYPE html><html><head><title>Edge Node</title></head><body><h1>Edge Service</h1></body></html>`;
-const MOCK_API = { status: "ok", node: "cf-edge" };
+// --- [全局常量] ---
+const WS_READY_STATE_OPEN = 1;
 
 export default {
-  async fetch(request) {
-    const url = new URL(request.url);
-    const ua = request.headers.get('User-Agent') || '';
+    async fetch(request) {
+        try {
+            const url = new URL(request.url);
+            const ua = request.headers.get('User-Agent') || '';
 
-    if (url.pathname !== SECRET_PATH) {
-      if (ua.toLowerCase().includes('bot')) {
-        return new Response(ROBOT_HTML, { headers: { "Content-Type": "text/html" } });
-      }
-      return new Response(JSON.stringify(MOCK_API), { headers: { "Content-Type": "application/json" } });
-    }
+            // 1. 路径与伪装逻辑 (防探测)
+            if (url.pathname !== SECRET_PATH) {
+                // 如果是爬虫，返回伪装 HTML
+                if (ua.toLowerCase().includes('bot') || ua.toLowerCase().includes('spider')) {
+                    return new Response(ROBOT_HTML, { headers: { "Content-Type": "text/html" } });
+                }
+                // 普通访问返回模拟 API
+                return new Response(JSON.stringify(MOCK_API), { 
+                    status: 200, 
+                    headers: { "Content-Type": "application/json" } 
+                });
+            }
 
-    if (request.headers.get('Upgrade') !== 'websocket') {
-      return new Response('Unauthorized', { status: 401 });
-    }
+            // 2. WebSocket 升级检查
+            const upgradeHeader = request.headers.get('Upgrade');
+            if (upgradeHeader !== 'websocket') {
+                return new Response('Unauthorized', { status: 401 });
+            }
 
-    const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
-    server.accept();
+            // 3. 进入高性能处理逻辑
+            return await handleVLESSWebSocket(request);
 
-    handleVLESS(server);
-
-    return new Response(null, { status: 101, webSocket: client });
-  }
+        } catch (err) {
+            return new Response(err.stack, { status: 500 });
+        }
+    },
 };
 
-// ================= 主逻辑 =================
+async function handleVLESSWebSocket(request) {
+    const wsPair = new WebSocketPair();
+    const [clientWS, serverWS] = Object.values(wsPair);
 
-async function handleVLESS(ws) {
-  const cleanUUID = UUID.replace(/-/g, '');
-  let remoteSocket = null;
-  let writer = null;
+    serverWS.accept();
 
-  const closeAll = () => {
-    try { if (remoteSocket) remoteSocket.close(); } catch {}
-    if (ws.readyState === 1) ws.close();
-  };
+    // 心跳保活 (解决长连接断开)
+    let heartbeat = setInterval(() => {
+        if (serverWS.readyState === WS_READY_STATE_OPEN) {
+            serverWS.send(new Uint8Array(0));
+        }
+    }, 30000);
 
-  ws.addEventListener('message', async (event) => {
+    const clearRes = () => {
+        clearInterval(heartbeat);
+        if (serverWS.readyState === WS_READY_STATE_OPEN) serverWS.close();
+    };
+
+    serverWS.addEventListener('close', clearRes);
+    serverWS.addEventListener('error', clearRes);
+
+    // 使用 ReadableStream 处理输入流
+    const wsReadable = createWebSocketReadableStream(serverWS);
+    let remoteSocket = null;
+
+    wsReadable.pipeTo(new WritableStream({
+        async write(chunk) {
+            if (remoteSocket) {
+                const writer = remoteSocket.writable.getWriter();
+                await writer.write(chunk);
+                writer.releaseLock();
+                return;
+            }
+
+            // 协议头部解析
+            const result = parseVLESSHeader(chunk);
+            if (result.hasError) throw new Error(result.message);
+
+            const vlessRespHeader = new Uint8Array([result.vlessVersion[0], 0]);
+            const rawClientData = chunk.slice(result.rawDataIndex);
+
+            // 处理 TCP 连接 (带 Fallback 机制)
+            try {
+                remoteSocket = await connectToRemote(result.addressRemote, result.portRemote);
+                const writer = remoteSocket.writable.getWriter();
+                await writer.write(rawClientData);
+                writer.releaseLock();
+
+                // 启动从远程到客户端的反向管道
+                pipeRemoteToWebSocket(remoteSocket, serverWS, vlessRespHeader);
+            } catch (err) {
+                if (serverWS.readyState === WS_READY_STATE_OPEN) {
+                    serverWS.close(1011, 'Remote connection failed');
+                }
+            }
+        },
+        close() {
+            if (remoteSocket) remoteSocket.close();
+        }
+    })).catch(err => {
+        console.error("Pipeline error:", err);
+        clearRes();
+    });
+
+    return new Response(null, { status: 101, webSocket: clientWS });
+}
+
+async function connectToRemote(address, port) {
     try {
-      const buf = new Uint8Array(event.data);
-
-      if (!remoteSocket) {
-        if (buf.length < 24) return closeAll();
-
-        const clientUUID = Array.from(buf.slice(1, 17))
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-
-        if (clientUUID !== cleanUUID) return closeAll();
-
-        let cursor = 18 + buf[17];
-        const command = buf[cursor++];
-        if (command !== 1) return closeAll();
-
-        const port = (buf[cursor] << 8) | buf[cursor + 1];
-        cursor += 2;
-
-        const addrType = buf[cursor++];
-        let address = '';
-
-        if (addrType === 1) {
-          address = buf.slice(cursor, cursor + 4).join('.');
-        } else if (addrType === 2) {
-          const len = buf[cursor];
-          address = new TextDecoder().decode(buf.slice(cursor + 1, cursor + 1 + len));
-        } else if (addrType === 3) {
-          address = Array.from({ length: 8 }, (_, i) =>
-            ((buf[cursor + i * 2] << 8) | buf[cursor + i * 2 + 1]).toString(16)
-          ).join(':');
-        }
-
-        const dataToForward = buf.slice(buf.length - (buf.length - cursor));
-
-        const retryConnect = async (retryCount = 0) => {
-          if (retryCount > MAX_RETRY) return closeAll();
-
-          try {
-            remoteSocket = await connectWithFallback(address, port, retryCount);
-            writer = remoteSocket.writable.getWriter();
-
-            pipeTCP2WS(ws, remoteSocket, retryConnect, retryCount);
-
-            if (dataToForward.length > 0)
-              await writer.write(dataToForward);
-
-          } catch {
-            const delay = BASE_DELAY * Math.pow(2, retryCount);
-            await new Promise(r => setTimeout(r, delay));
-            await retryConnect(retryCount + 1);
-          }
-        };
-
-        await retryConnect();
-        return;
-      }
-
-      if (writer) {
-        try {
-          await writer.write(buf);
-        } catch {
-          closeAll();
-        }
-      }
-
-    } catch {
-      closeAll();
+        // 直连尝试
+        const socket = connect({ hostname: address, port: port });
+        await socket.opened;
+        return socket;
+    } catch (e) {
+        // 失败则通过 ProxyIP 转发 (解决 Telegram 等封锁 IP)
+        const socket = connect({ hostname: PROXY_IP, port: PROXY_PORT });
+        await socket.opened;
+        return socket;
     }
-  });
-
-  ws.addEventListener('close', closeAll);
-  ws.addEventListener('error', closeAll);
 }
 
-// ================= 连接逻辑 =================
+// 高性能管道：分片、缓存控制、毫秒级 Flush
+async function pipeRemoteToWebSocket(remoteSocket, ws, vlessHeader) {
+    const reader = remoteSocket.readable.getReader();
+    let headerSent = false;
+    let bufferQueue = [];
+    let bufferedBytes = 0;
 
-async function connectWithFallback(address, port, retryCount) {
-  try {
-    const socket = connect(
-      { hostname: address, port },
-      { allowHalfOpen: true }
-    );
+    const flush = () => {
+        if (ws.readyState !== WS_READY_STATE_OPEN || bufferQueue.length === 0) return;
+        const total = bufferQueue.reduce((s, c) => s + c.byteLength, 0);
+        const merged = new Uint8Array(total);
+        let offset = 0;
+        for (const c of bufferQueue) {
+            merged.set(c, offset);
+            offset += c.byteLength;
+        }
+        ws.send(merged);
+        bufferQueue = [];
+        bufferedBytes = 0;
+    };
 
-    await Promise.race([
-      socket.opened,
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Connect Timeout')), CONNECT_TIMEOUT)
-      )
-    ]);
+    const flushTimer = setInterval(flush, 15); // 每15ms强制刷新，极大地优化 Telegram 体感速度
 
-    return socket;
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-  } catch {
-    if (retryCount >= MAX_RETRY) throw new Error('Connect failed');
+            if (!headerSent) {
+                const combined = new Uint8Array(vlessHeader.byteLength + value.byteLength);
+                combined.set(vlessHeader, 0);
+                combined.set(value, vlessHeader.byteLength);
+                bufferQueue.push(combined);
+                headerSent = true;
+            } else {
+                bufferQueue.push(value);
+            }
+            bufferedBytes += value.byteLength;
 
-    const socket = connect(
-      { hostname: PROXY_HOST, port: PROXY_PORT },
-      { allowHalfOpen: true }
-    );
-
-    await socket.opened;
-    return socket;
-  }
+            if (bufferedBytes >= 1024 * 512) flush(); // 512KB 自动刷新
+        }
+    } catch (e) {
+        console.error("Remote read error:", e);
+    } finally {
+        clearInterval(flushTimer);
+        flush();
+        reader.releaseLock();
+        if (ws.readyState === WS_READY_STATE_OPEN) ws.close();
+    }
 }
 
-// ================= 数据管道 =================
+function createWebSocketReadableStream(ws) {
+    return new ReadableStream({
+        start(controller) {
+            ws.addEventListener('message', e => controller.enqueue(new Uint8Array(e.data)));
+            ws.addEventListener('close', () => controller.close());
+            ws.addEventListener('error', e => controller.error(e));
+        }
+    });
+}
 
-async function pipeTCP2WS(ws, socket, retryFn, retryCount) {
-  const reader = socket.readable.getReader();
+function parseVLESSHeader(buffer) {
+    if (buffer.byteLength < 24) return { hasError: true, message: 'Invalid header' };
+    const view = new DataView(buffer.buffer);
+    const uuid = Array.from(new Uint8Array(buffer.slice(1, 17))).map(b => b.toString(16).padStart(2, '0')).join('');
+    const cleanFixedUUID = FIXED_UUID.replace(/-/g, '');
+    
+    if (uuid !== cleanFixedUUID) return { hasError: true, message: 'Auth failed' };
 
-  let firstPacketReceived = false;
+    let offset = 18 + view.getUint8(17);
+    const cmd = view.getUint8(offset++); 
+    const port = view.getUint16(offset); offset += 2;
+    const addrType = view.getUint8(offset++);
+    let address = '';
 
-  const firstPacketTimer = setTimeout(async () => {
-    if (!firstPacketReceived) {
-      try { socket.close(); } catch {}
-      await retryFn(retryCount + 1);
+    if (addrType === 1) {
+        address = Array.from(new Uint8Array(buffer.slice(offset, offset + 4))).join('.');
+    } else if (addrType === 2) {
+        const len = view.getUint8(offset++);
+        address = new TextDecoder().decode(buffer.slice(offset, offset + len));
+    } else if (addrType === 3) {
+        address = Array.from({length:8}, (_,i)=>view.getUint16(offset+i*2).toString(16)).join(':');
     }
-  }, FIRST_PACKET_TIMEOUT);
 
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done || ws.readyState !== 1) break;
-
-      firstPacketReceived = true;
-      clearTimeout(firstPacketTimer);
-
-      let offset = 0;
-      while (offset < value.length) {
-        ws.send(value.slice(offset, offset + MAX_CHUNK));
-        offset += MAX_CHUNK;
-      }
-    }
-  } catch {
-    await retryFn(retryCount + 1);
-  } finally {
-    reader.releaseLock();
-    if (ws.readyState === 1) ws.close();
-  }
+    return { hasError: false, addressRemote: address, portRemote: port, rawDataIndex: offset + (addrType === 1 ? 4 : addrType === 2 ? 0 : 16), vlessVersion: new Uint8Array(buffer.slice(0, 1)) };
 }
