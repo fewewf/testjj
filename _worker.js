@@ -132,52 +132,35 @@ async function connectToRemote(address, port) {
 async function pipeRemoteToWebSocket(remoteSocket, ws, vlessHeader) {
     const reader = remoteSocket.readable.getReader();
     let headerSent = false;
-    let bufferQueue = [];
-    let bufferedBytes = 0;
-
-    const flush = () => {
-        if (ws.readyState !== WS_READY_STATE_OPEN || bufferQueue.length === 0) return;
-        const total = bufferQueue.reduce((s, c) => s + c.byteLength, 0);
-        const merged = new Uint8Array(total);
-        let offset = 0;
-        for (const c of bufferQueue) {
-            merged.set(c, offset);
-            offset += c.byteLength;
-        }
-        ws.send(merged);
-        bufferQueue = [];
-        bufferedBytes = 0;
-    };
-
-    const flushTimer = setInterval(flush, 15); // 每15ms强制刷新，极大地优化 Telegram 体感速度
 
     try {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
+            if (ws.readyState !== WS_READY_STATE_OPEN) break;
+
             if (!headerSent) {
+                // 关键修复：确保 VLESS 响应头作为独立包或严格的首包发送
                 const combined = new Uint8Array(vlessHeader.byteLength + value.byteLength);
                 combined.set(vlessHeader, 0);
                 combined.set(value, vlessHeader.byteLength);
-                bufferQueue.push(combined);
+                
+                ws.send(combined);
                 headerSent = true;
             } else {
-                bufferQueue.push(value);
+                // 后续流量直接透传，不做任何缓存合并，防止破坏 SSL 特征
+                ws.send(value);
             }
-            bufferedBytes += value.byteLength;
-
-            if (bufferedBytes >= 1024 * 512) flush(); // 512KB 自动刷新
         }
     } catch (e) {
         console.error("Remote read error:", e);
     } finally {
-        clearInterval(flushTimer);
-        flush();
         reader.releaseLock();
         if (ws.readyState === WS_READY_STATE_OPEN) ws.close();
     }
 }
+
 
 function createWebSocketReadableStream(ws) {
     return new ReadableStream({
