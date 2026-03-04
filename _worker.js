@@ -1,41 +1,33 @@
 import { connect } from 'cloudflare:sockets';
-const _cQndIdPFBwdwdfPS = '/t-vip-9026/auth-888999';
-const _rcHzgeggsXmfUWrW = '56892533-7dad-324a-b0e8-51040d0d04ad';
-const _JeHxQnQHudDPWbyN = 'yx1.9898981.xyz';
-const _JsGTkSTJgBtAOVZl = 8443;
-const _KtFJDaQcgkFDwTLY = (_yRsSyhpBCxFbqNPU, _HpkuToMJSAvwPNva = 404) => {
-  const _XwbeLFBOTVlfgfaV = {
+const _kAtFWWCOYpzAQsPd = '/tunnel-vip-2026/auth-888999';
+const _mbhCCWIFhtvkFufm = '56892533-7dad-475a-b0e8-51040d0d04ad';
+const _vVwiDUUvulyxyOqq = 'ProxyIP.FR.CMLiussss.net';
+const _FpArNnfOkKILXNeL = 443;
+const _ZQwazNJRhdcswHEU = 15000;
+const _RAFPAdVNijTWnNRt = (_BtftGQqnSPvQITtK, _SaDPPbkRqRMJdVkv = 404) => {
+  return new Response(JSON.stringify({
     timestamp: new Date().toISOString(),
-    status: _HpkuToMJSAvwPNva,
-    error: _HpkuToMJSAvwPNva === 404 ? "Not Found" : "Unauthorized",
-    message: `No static resource or API endpoint found for: ${_yRsSyhpBCxFbqNPU.pathname}`,
-    path: _yRsSyhpBCxFbqNPU.pathname,
-    requestId: Math.random().toString(36).substring(2, 15).toUpperCase(),
-    service: "api-gateway-v2"
-  };
-  return new Response(JSON.stringify(_XwbeLFBOTVlfgfaV), {
-    status: _HpkuToMJSAvwPNva,
+    status: _SaDPPbkRqRMJdVkv,
+    error: "Resource Error",
+    requestId: Math.random().toString(36).substring(2, 10).toUpperCase()
+  }), {
+    status: _SaDPPbkRqRMJdVkv,
     headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'X-Content-Type-Options': 'nosniff',
-      'X-XSS-Protection': '1; mode=block',
-      'X-Frame-Options': 'DENY',
+      'Content-Type': 'application/json',
       'Server': 'nginx'
     }
   });
 };
 export default {
-  async fetch(_gAaPbetxNIakJQKw) {
-    const _yRsSyhpBCxFbqNPU = new URL(_gAaPbetxNIakJQKw.url);
-    if (_yRsSyhpBCxFbqNPU.pathname !== _cQndIdPFBwdwdfPS) {
-      return _KtFJDaQcgkFDwTLY(_yRsSyhpBCxFbqNPU, 404);
-    }
-    if (_gAaPbetxNIakJQKw.headers.get('Upgrade') !== 'websocket') {
+  async fetch(_nqGkAyxkefkcoJPD) {
+    const _BtftGQqnSPvQITtK = new URL(_nqGkAyxkefkcoJPD.url);
+    if (_BtftGQqnSPvQITtK.pathname !== _kAtFWWCOYpzAQsPd) return _RAFPAdVNijTWnNRt(_BtftGQqnSPvQITtK, 404);
+    const _pjtmHImNXPYEmzif = (_nqGkAyxkefkcoJPD.headers.get('User-Agent') || '').toLowerCase();
+    if (_pjtmHImNXPYEmzif.includes('python-requests')) return _RAFPAdVNijTWnNRt(_BtftGQqnSPvQITtK, 403);
+    if (_nqGkAyxkefkcoJPD.headers.get('Upgrade') !== 'websocket') {
       return new Response(JSON.stringify({
         status: "UP",
-        version: "2.4.1-RELEASE",
-        uptime: Math.floor(Math.random() * 100000) + "s"
+        heartbeat: Date.now()
       }), {
         status: 200,
         headers: {
@@ -43,158 +35,139 @@ export default {
         }
       });
     }
-    const _sdTNvSnQHgfISqwc = new WebSocketPair();
-    const [_cIMstliQdZbHDVpr, _zNeFASTClFTonTIr] = Object.values(_sdTNvSnQHgfISqwc);
-    _zNeFASTClFTonTIr.accept();
-    _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr).catch(_wozDXumapohYMyrU => {
-      console.error("Critical WS Error:", _wozDXumapohYMyrU.message);
-      _zNeFASTClFTonTIr.close();
-    });
+    const _CPxzbEwwRjgOGFCv = new WebSocketPair();
+    const [_ttUNzTUvaLzjqPTB, _zDnzfATLqPjBjHWg] = Object.values(_CPxzbEwwRjgOGFCv);
+    _zDnzfATLqPjBjHWg.accept();
+    _fuIkTYYbbIggKYkP(_zDnzfATLqPjBjHWg).catch(_oFompoaQDqTJsOoB => console.log(`WS_SAFE_EXIT: ${_oFompoaQDqTJsOoB.message}`));
     return new Response(null, {
       status: 101,
-      webSocket: _cIMstliQdZbHDVpr,
+      webSocket: _ttUNzTUvaLzjqPTB,
       headers: {
-        'Sec-WebSocket-Protocol': _gAaPbetxNIakJQKw.headers.get('Sec-WebSocket-Protocol') || '',
-        'Connection': 'Upgrade',
         'Upgrade': 'websocket'
       }
     });
   }
 };
-async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
-  const _rQBZEdhdojOaQypG = _GWHvqQvdiYQMUGEh(_zNeFASTClFTonTIr);
-  let _jJUejlszoJxKpVyr = null;
-  let _VMwvXLIMJYZDGMLS = null;
-  let _IxamNRThaYlJuRBk = null;
-  const _mbaxDGhgHkhYiXMf = _rQBZEdhdojOaQypG.getReader();
+async function _fuIkTYYbbIggKYkP(_zDnzfATLqPjBjHWg) {
+  const _zjNyYTWoKtcjDoQM = _SkdQYqzKfVCbDJdq(_zDnzfATLqPjBjHWg);
+  let _bIVZMjWOCCEfaAhM = null;
+  let _SdIMwkcdPQuCefgJ = _zjNyYTWoKtcjDoQM.getReader();
   try {
     const {
-      done: _ViOGcMXtboZDHxcp,
-      value: _xfAKCMFjFRznTnje
-    } = await _mbaxDGhgHkhYiXMf.read();
-    if (_ViOGcMXtboZDHxcp) return;
-    const _TyFwoqvKDFIbgSAh = _MkxTgzbSwfhpsfJi(_xfAKCMFjFRznTnje);
-    if (_TyFwoqvKDFIbgSAh.hasError) throw new Error(_TyFwoqvKDFIbgSAh.message);
-    _VMwvXLIMJYZDGMLS = new Uint8Array([_TyFwoqvKDFIbgSAh.vlessVersion[0], 0]);
-    _IxamNRThaYlJuRBk = _xfAKCMFjFRznTnje.slice(_TyFwoqvKDFIbgSAh.rawDataIndex);
+      done: _QKlfGnGfeNrhPtrC,
+      value: _GKDJUkDXogrnjAIy
+    } = await _SdIMwkcdPQuCefgJ.read();
+    if (_QKlfGnGfeNrhPtrC) return;
+    const _pnkTUXBGiREcOSfg = _yDjlFCFkFulDlEdh(_GKDJUkDXogrnjAIy);
+    if (_pnkTUXBGiREcOSfg.hasError) throw new Error('VLESS_AUTH_FAIL');
+    const _rXfvkgnUeRnIGUII = new Uint8Array([_pnkTUXBGiREcOSfg.vlessVersion[0], 0]);
+    const _BgVcHknuPzanBPbC = _GKDJUkDXogrnjAIy.slice(_pnkTUXBGiREcOSfg.rawDataIndex);
     try {
-      _jJUejlszoJxKpVyr = await connect({
-        hostname: _TyFwoqvKDFIbgSAh.addressRemote,
-        port: _TyFwoqvKDFIbgSAh.portRemote
+      _bIVZMjWOCCEfaAhM = await connect({
+        hostname: _pnkTUXBGiREcOSfg.addressRemote,
+        port: _pnkTUXBGiREcOSfg.portRemote
       }, {
         allowHalfOpen: true
       });
-      const _UNaMwSaJkLsWDhiI = _jJUejlszoJxKpVyr.writable.getWriter();
-      await _UNaMwSaJkLsWDhiI.write(_IxamNRThaYlJuRBk);
-      _UNaMwSaJkLsWDhiI.releaseLock();
-    } catch (_mjalBDTlbqPeVDbq) {
-      _jJUejlszoJxKpVyr = await connect({
-        hostname: PROXY_IP,
-        port: _JsGTkSTJgBtAOVZl
+    } catch {
+      _bIVZMjWOCCEfaAhM = await connect({
+        hostname: _vVwiDUUvulyxyOqq,
+        port: _FpArNnfOkKILXNeL
       }, {
         allowHalfOpen: true
       });
-      const _UNaMwSaJkLsWDhiI = _jJUejlszoJxKpVyr.writable.getWriter();
-      await _UNaMwSaJkLsWDhiI.write(_IxamNRThaYlJuRBk);
-      _UNaMwSaJkLsWDhiI.releaseLock();
     }
-    const _sidrNzxcXsWcFyfs = _YXLwwGKkeKknZtyk(_jJUejlszoJxKpVyr, _zNeFASTClFTonTIr, _VMwvXLIMJYZDGMLS);
-    const _msNNYJilORBFjlRr = (async () => {
-      const _UNaMwSaJkLsWDhiI = _jJUejlszoJxKpVyr.writable.getWriter();
-      try {
-        while (true) {
-          const {
-            done: _ViOGcMXtboZDHxcp,
-            value: _xfAKCMFjFRznTnje
-          } = await _mbaxDGhgHkhYiXMf.read();
-          if (_ViOGcMXtboZDHxcp) break;
-          await _UNaMwSaJkLsWDhiI.write(_xfAKCMFjFRznTnje);
-        }
-      } finally {
-        _UNaMwSaJkLsWDhiI.releaseLock();
-      }
-    })();
-    await Promise.race([_sidrNzxcXsWcFyfs, _msNNYJilORBFjlRr]);
-  } catch (_wozDXumapohYMyrU) {
-    console.error("HandleWS Error:", _wozDXumapohYMyrU.message);
-  } finally {
-    _mbaxDGhgHkhYiXMf.releaseLock();
-    if (_jJUejlszoJxKpVyr) try {
-      _jJUejlszoJxKpVyr.close();
+    const _THQzHtDqRkiXCXBU = _bIVZMjWOCCEfaAhM.writable.getWriter();
+    await _THQzHtDqRkiXCXBU.write(_BgVcHknuPzanBPbC);
+    _THQzHtDqRkiXCXBU.releaseLock();
+    const _yHycNNXgUFgZYqMP = _tYvGNYvWIDJMQxZl(_bIVZMjWOCCEfaAhM, _zDnzfATLqPjBjHWg, _rXfvkgnUeRnIGUII);
+    const _AENwCpPcVgfrSINP = _CKgwzlxxUMqqnoPQ(_SdIMwkcdPQuCefgJ, _bIVZMjWOCCEfaAhM);
+    await Promise.race([_yHycNNXgUFgZYqMP, _AENwCpPcVgfrSINP]);
+  } catch (_iALhJWAeuZDzeAxq) {} finally {
+    try {
+      _SdIMwkcdPQuCefgJ.releaseLock();
     } catch {}
-    if (_zNeFASTClFTonTIr.readyState === 1) _zNeFASTClFTonTIr.close();
+    if (_bIVZMjWOCCEfaAhM) try {
+      _bIVZMjWOCCEfaAhM.close();
+    } catch {}
+    if (_zDnzfATLqPjBjHWg.readyState === 1) try {
+      _zDnzfATLqPjBjHWg.close();
+    } catch {}
   }
 }
-async function _YXLwwGKkeKknZtyk(_jJUejlszoJxKpVyr, _YHRMXlCNQXcLTQTX, _fjzIINYImWgZaPDP) {
-  const _mbaxDGhgHkhYiXMf = _jJUejlszoJxKpVyr.readable.getReader();
-  let _jVqfgMYADQeWjGUf = false;
+async function _tYvGNYvWIDJMQxZl(_bIVZMjWOCCEfaAhM, _uNqSJypHNndQhNeG, _rXfvkgnUeRnIGUII) {
+  const _SdIMwkcdPQuCefgJ = _bIVZMjWOCCEfaAhM.readable.getReader();
+  let _XeFoJOwCswYRHndz = false;
   try {
     while (true) {
       const {
-        done: _ViOGcMXtboZDHxcp,
-        value: _xfAKCMFjFRznTnje
-      } = await _mbaxDGhgHkhYiXMf.read();
-      if (_ViOGcMXtboZDHxcp) break;
-      if (_YHRMXlCNQXcLTQTX.readyState !== 1) break;
-      if (!_jVqfgMYADQeWjGUf) {
-        const _gBTJNTavaUowSECF = new Uint8Array(_fjzIINYImWgZaPDP.byteLength + _xfAKCMFjFRznTnje.byteLength);
-        _gBTJNTavaUowSECF.set(_fjzIINYImWgZaPDP, 0);
-        _gBTJNTavaUowSECF.set(_xfAKCMFjFRznTnje, _fjzIINYImWgZaPDP.byteLength);
-        _YHRMXlCNQXcLTQTX.send(_gBTJNTavaUowSECF);
-        _jVqfgMYADQeWjGUf = true;
+        done: _QKlfGnGfeNrhPtrC,
+        value: _GKDJUkDXogrnjAIy
+      } = await _SdIMwkcdPQuCefgJ.read();
+      if (_QKlfGnGfeNrhPtrC || _uNqSJypHNndQhNeG.readyState !== 1) break;
+      if (!_XeFoJOwCswYRHndz) {
+        const _FtojNLPnBmUxhDVa = new Uint8Array(_rXfvkgnUeRnIGUII.byteLength + _GKDJUkDXogrnjAIy.byteLength);
+        _FtojNLPnBmUxhDVa.set(_rXfvkgnUeRnIGUII, 0);
+        _FtojNLPnBmUxhDVa.set(_GKDJUkDXogrnjAIy, _rXfvkgnUeRnIGUII.byteLength);
+        _uNqSJypHNndQhNeG.send(_FtojNLPnBmUxhDVa);
+        _XeFoJOwCswYRHndz = true;
       } else {
-        _YHRMXlCNQXcLTQTX.send(_xfAKCMFjFRznTnje);
+        _uNqSJypHNndQhNeG.send(_GKDJUkDXogrnjAIy);
       }
     }
   } finally {
-    _mbaxDGhgHkhYiXMf.releaseLock();
+    _SdIMwkcdPQuCefgJ.releaseLock();
   }
 }
-function _GWHvqQvdiYQMUGEh(_YHRMXlCNQXcLTQTX) {
+async function _CKgwzlxxUMqqnoPQ(_SdIMwkcdPQuCefgJ, _bIVZMjWOCCEfaAhM) {
+  const _THQzHtDqRkiXCXBU = _bIVZMjWOCCEfaAhM.writable.getWriter();
+  try {
+    while (true) {
+      const {
+        done: _QKlfGnGfeNrhPtrC,
+        value: _GKDJUkDXogrnjAIy
+      } = await _SdIMwkcdPQuCefgJ.read();
+      if (_QKlfGnGfeNrhPtrC) break;
+      await _THQzHtDqRkiXCXBU.write(_GKDJUkDXogrnjAIy);
+    }
+  } finally {
+    try {
+      _THQzHtDqRkiXCXBU.releaseLock();
+    } catch {}
+  }
+}
+function _SkdQYqzKfVCbDJdq(_uNqSJypHNndQhNeG) {
   return new ReadableStream({
-    start(_umAYPzwPqpEFUFDI) {
-      _YHRMXlCNQXcLTQTX.addEventListener('message', _fVheVUSIAbHdlEXQ => _umAYPzwPqpEFUFDI.enqueue(new Uint8Array(_fVheVUSIAbHdlEXQ.data)));
-      _YHRMXlCNQXcLTQTX.addEventListener('close', () => _umAYPzwPqpEFUFDI.close());
-      _YHRMXlCNQXcLTQTX.addEventListener('error', _fVheVUSIAbHdlEXQ => _umAYPzwPqpEFUFDI.error(_fVheVUSIAbHdlEXQ));
+    start(_DYuEBcZbsrERdXNT) {
+      _uNqSJypHNndQhNeG.addEventListener('message', _oFompoaQDqTJsOoB => _DYuEBcZbsrERdXNT.enqueue(new Uint8Array(_oFompoaQDqTJsOoB.data)));
+      _uNqSJypHNndQhNeG.addEventListener('close', () => _DYuEBcZbsrERdXNT.close());
+      _uNqSJypHNndQhNeG.addEventListener('error', () => _DYuEBcZbsrERdXNT.close());
     }
   });
 }
-function _MkxTgzbSwfhpsfJi(_QjfgPTDmcvdvEOSN) {
-  if (_QjfgPTDmcvdvEOSN.byteLength < 24) return {
-    hasError: true,
-    message: 'Invalid header'
+function _yDjlFCFkFulDlEdh(_eGiySjdHaoTMjyVS) {
+  if (_eGiySjdHaoTMjyVS.byteLength < 24) return {
+    hasError: true
   };
-  const _igZwspOTXOUDIgpJ = new DataView(_QjfgPTDmcvdvEOSN.buffer);
-  const _mQuBmCqLfAfNDGqA = Array.from(new Uint8Array(_QjfgPTDmcvdvEOSN.slice(1, 17))).map(_UgvgeNOVlJZSBxZG => _UgvgeNOVlJZSBxZG.toString(16).padStart(2, '0')).join('');
-  if (_mQuBmCqLfAfNDGqA !== _rcHzgeggsXmfUWrW.replace(/-/g, '')) return {
-    hasError: true,
-    message: 'Unauthorized'
+  const _qsItakeIGBwoJYYW = new DataView(_eGiySjdHaoTMjyVS.buffer);
+  const _oOeFlSPIgGILpbMP = Array.from(new Uint8Array(_eGiySjdHaoTMjyVS.slice(1, 17))).map(_dgedNtlUYehYFnyc => _dgedNtlUYehYFnyc.toString(16).padStart(2, '0')).join('');
+  if (_oOeFlSPIgGILpbMP !== _mbhCCWIFhtvkFufm.replace(/-/g, '')) return {
+    hasError: true
   };
-  const _jAStFyandqGWXqZR = _igZwspOTXOUDIgpJ.getUint8(17);
-  let _pWtFmyUVDkElICtU = 18 + _jAStFyandqGWXqZR;
-  const _fIfiLUgHAsoXFbhV = _igZwspOTXOUDIgpJ.getUint8(_pWtFmyUVDkElICtU++);
-  const _ytQFGPvxNQUjZTAs = _igZwspOTXOUDIgpJ.getUint16(_pWtFmyUVDkElICtU);
-  _pWtFmyUVDkElICtU += 2;
-  const _PnLELLVjNfMwYHCb = _igZwspOTXOUDIgpJ.getUint8(_pWtFmyUVDkElICtU++);
-  let _SnVNbvZshYkvCWQB = '';
-  if (_PnLELLVjNfMwYHCb === 1) {
-    _SnVNbvZshYkvCWQB = Array.from(new Uint8Array(_QjfgPTDmcvdvEOSN.slice(_pWtFmyUVDkElICtU, _pWtFmyUVDkElICtU + 4))).join('.');
-    _pWtFmyUVDkElICtU += 4;
-  } else if (_PnLELLVjNfMwYHCb === 2) {
-    const _UGfWcImCHyxtNgQc = _igZwspOTXOUDIgpJ.getUint8(_pWtFmyUVDkElICtU++);
-    _SnVNbvZshYkvCWQB = new TextDecoder().decode(_QjfgPTDmcvdvEOSN.slice(_pWtFmyUVDkElICtU, _pWtFmyUVDkElICtU + _UGfWcImCHyxtNgQc));
-    _pWtFmyUVDkElICtU += _UGfWcImCHyxtNgQc;
-  } else if (_PnLELLVjNfMwYHCb === 3) {
-    _SnVNbvZshYkvCWQB = Array.from({
-      length: 8
-    }, (_iuHKolsMIqvRXzVH, _HRhJESqDjdwZmuMt) => _igZwspOTXOUDIgpJ.getUint16(_pWtFmyUVDkElICtU + _HRhJESqDjdwZmuMt * 2).toString(16)).join(':');
-    _pWtFmyUVDkElICtU += 16;
+  let _fSdrOmGnfKSuBHUL = 18 + _qsItakeIGBwoJYYW.getUint8(17);
+  const _AMvlNpXsCrFqEKNm = _qsItakeIGBwoJYYW.getUint16(_fSdrOmGnfKSuBHUL + 1);
+  const _qMVlKYsVzjszNvvg = _qsItakeIGBwoJYYW.getUint8(_fSdrOmGnfKSuBHUL + 3);
+  let _DEZMCDHlDKxOqUTL = '';
+  _fSdrOmGnfKSuBHUL += 4;
+  if (_qMVlKYsVzjszNvvg === 1) _DEZMCDHlDKxOqUTL = Array.from(new Uint8Array(_eGiySjdHaoTMjyVS.slice(_fSdrOmGnfKSuBHUL, _fSdrOmGnfKSuBHUL + 4))).join('.');else if (_qMVlKYsVzjszNvvg === 2) {
+    const _yeDjZARCtotrdWYv = _qsItakeIGBwoJYYW.getUint8(_fSdrOmGnfKSuBHUL);
+    _DEZMCDHlDKxOqUTL = new TextDecoder().decode(_eGiySjdHaoTMjyVS.slice(_fSdrOmGnfKSuBHUL + 1, _fSdrOmGnfKSuBHUL + 1 + _yeDjZARCtotrdWYv));
   }
   return {
     hasError: false,
-    addressRemote: _SnVNbvZshYkvCWQB,
-    portRemote: _ytQFGPvxNQUjZTAs,
-    rawDataIndex: _pWtFmyUVDkElICtU,
-    vlessVersion: new Uint8Array(_QjfgPTDmcvdvEOSN.slice(0, 1))
+    addressRemote: _DEZMCDHlDKxOqUTL,
+    portRemote: _AMvlNpXsCrFqEKNm,
+    rawDataIndex: _eGiySjdHaoTMjyVS.byteLength,
+    vlessVersion: new Uint8Array(_eGiySjdHaoTMjyVS.slice(0, 1))
   };
 }
