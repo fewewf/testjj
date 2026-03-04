@@ -73,9 +73,9 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
   let _jJUejlszoJxKpVyr = null;
   let _VMwvXLIMJYZDGMLS = null;
   let _IxamNRThaYlJuRBk = null;
-  let _useProxyIP = false; // 标记是否使用代理IP
-  let _retryCount = 0; // 重试计数
-  const MAX_RETRIES = 2; // 最大重试次数
+  let _useProxyIP = false;
+  let _retryCount = 0;
+  const MAX_RETRIES = 2;
   
   const _mbaxDGhgHkhYiXMf = _rQBZEdhdojOaQypG.getReader();
   
@@ -124,13 +124,13 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
         if (_retryCount < MAX_RETRIES) {
           _retryCount++;
           console.log(`Connection attempt ${_retryCount} failed, retrying...`);
-          return attemptConnectionWithRetry(!useProxy); // 切换连接方式重试
+          return attemptConnectionWithRetry(!useProxy);
         }
         throw err;
       }
     }
     
-    // 尝试首次连接（先尝试直接连接）
+    // 尝试首次连接
     try {
       _jJUejlszoJxKpVyr = await attemptConnectionWithRetry(false);
     } catch (err) {
@@ -175,7 +175,7 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
               newSocket, 
               _zNeFASTClFTonTIr, 
               _VMwvXLIMJYZDGMLS,
-              null // 不再重试，避免循环
+              null
             ).catch(console.error);
             
           } catch (fallbackErr) {
@@ -219,9 +219,9 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
   }
 }
 
-// 修改后的数据转发函数，增加回退回调
+// 修正：将 _jJUejlszoJKpVyr 改为 _jJUejlszoJxKpVyr
 async function _YXLwwGKkeKknZtyk(_jJUejlszoJxKpVyr, _YHRMXlCNQXcLTQTX, _fjzIINYImWgZaPDP, _fallbackCallback = null) {
-  const _mbaxDGhgHkhYiXMf = _jJUejlszoJKpVyr.readable.getReader();
+  const _mbaxDGhgHkhYiXMf = _jJUejlszoJxKpVyr.readable.getReader();  // 修正这里！
   let _jVqfgMYADQeWjGUf = false;
   let _hasIncomingData = false;
   
@@ -251,7 +251,7 @@ async function _YXLwwGKkeKknZtyk(_jJUejlszoJxKpVyr, _YHRMXlCNQXcLTQTX, _fjzIINYI
   } finally {
     _mbaxDGhgHkhYiXMf.releaseLock();
     
-    // 关键：如果没有收到任何数据且提供了回退回调，则触发回退
+    // 如果没有收到任何数据且提供了回退回调，则触发回退
     if (!_hasIncomingData && _fallbackCallback) {
       console.log("No incoming data detected, triggering fallback...");
       await _fallbackCallback();
