@@ -1,173 +1,136 @@
 import { connect } from 'cloudflare:sockets';
-const _kAtFWWCOYpzAQsPd = '/tunnel-vip-2026/auth-888999';
-const _mbhCCWIFhtvkFufm = '56892533-7dad-475a-b0e8-51040d0d04ad';
-const _vVwiDUUvulyxyOqq = 'ProxyIP.FR.CMLiussss.net';
-const _FpArNnfOkKILXNeL = 443;
-const _ZQwazNJRhdcswHEU = 15000;
-const _RAFPAdVNijTWnNRt = (_BtftGQqnSPvQITtK, _SaDPPbkRqRMJdVkv = 404) => {
-  return new Response(JSON.stringify({
-    timestamp: new Date().toISOString(),
-    status: _SaDPPbkRqRMJdVkv,
-    error: "Resource Error",
-    requestId: Math.random().toString(36).substring(2, 10).toUpperCase()
-  }), {
-    status: _SaDPPbkRqRMJdVkv,
-    headers: {
-      'Content-Type': 'application/json',
-      'Server': 'nginx'
-    }
-  });
-};
+
+const _cQndIdPFBwdwdfPS = '/t-vip-9026/auth-888999';
+const _rcHzgeggsXmfUWrW = '56892533-7dad-324a-b0e8-51040d0d04ad';
+// 作为 Fallback 节点（仅在直连失败时启用）
+const _JeHxQnQHudDPWbyN = 'yx1.9898981.xyz'; 
+const _JsGTkSTJgBtAOVZl = 8443;
+
 export default {
-  async fetch(_nqGkAyxkefkcoJPD) {
-    const _BtftGQqnSPvQITtK = new URL(_nqGkAyxkefkcoJPD.url);
-    if (_BtftGQqnSPvQITtK.pathname !== _kAtFWWCOYpzAQsPd) return _RAFPAdVNijTWnNRt(_BtftGQqnSPvQITtK, 404);
-    const _pjtmHImNXPYEmzif = (_nqGkAyxkefkcoJPD.headers.get('User-Agent') || '').toLowerCase();
-    if (_pjtmHImNXPYEmzif.includes('python-requests')) return _RAFPAdVNijTWnNRt(_BtftGQqnSPvQITtK, 403);
-    if (_nqGkAyxkefkcoJPD.headers.get('Upgrade') !== 'websocket') {
-      return new Response(JSON.stringify({
-        status: "UP",
-        heartbeat: Date.now()
-      }), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json'
+    async fetch(request) {
+        const url = new URL(request.url);
+        if (url.pathname !== _cQndIdPFBwdwdfPS) return new Response('Not Found', { status: 404 });
+        if (request.headers.get('Upgrade') !== 'websocket') {
+            return new Response(JSON.stringify({ status: "UP", version: "2.4.2" }), { status: 200 });
         }
-      });
+
+        const wsPair = new WebSocketPair();
+        const [client, server] = Object.values(wsPair);
+        server.accept();
+
+        handleVLESS(server, request).catch(err => console.error("Critical:", err));
+
+        return new Response(null, { status: 101, webSocket: client });
     }
-    const _CPxzbEwwRjgOGFCv = new WebSocketPair();
-    const [_ttUNzTUvaLzjqPTB, _zDnzfATLqPjBjHWg] = Object.values(_CPxzbEwwRjgOGFCv);
-    _zDnzfATLqPjBjHWg.accept();
-    _fuIkTYYbbIggKYkP(_zDnzfATLqPjBjHWg).catch(_oFompoaQDqTJsOoB => console.log(`WS_SAFE_EXIT: ${_oFompoaQDqTJsOoB.message}`));
-    return new Response(null, {
-      status: 101,
-      webSocket: _ttUNzTUvaLzjqPTB,
-      headers: {
-        'Upgrade': 'websocket'
-      }
-    });
-  }
 };
-async function _fuIkTYYbbIggKYkP(_zDnzfATLqPjBjHWg) {
-  const _zjNyYTWoKtcjDoQM = _SkdQYqzKfVCbDJdq(_zDnzfATLqPjBjHWg);
-  let _bIVZMjWOCCEfaAhM = null;
-  let _SdIMwkcdPQuCefgJ = _zjNyYTWoKtcjDoQM.getReader();
-  try {
-    const {
-      done: _QKlfGnGfeNrhPtrC,
-      value: _GKDJUkDXogrnjAIy
-    } = await _SdIMwkcdPQuCefgJ.read();
-    if (_QKlfGnGfeNrhPtrC) return;
-    const _pnkTUXBGiREcOSfg = _yDjlFCFkFulDlEdh(_GKDJUkDXogrnjAIy);
-    if (_pnkTUXBGiREcOSfg.hasError) throw new Error('VLESS_AUTH_FAIL');
-    const _rXfvkgnUeRnIGUII = new Uint8Array([_pnkTUXBGiREcOSfg.vlessVersion[0], 0]);
-    const _BgVcHknuPzanBPbC = _GKDJUkDXogrnjAIy.slice(_pnkTUXBGiREcOSfg.rawDataIndex);
+
+async function handleVLESS(serverWS, request) {
+    // 将 WebSocket 转换为 ReadableStream (参考第二份代码的稳定性写法)
+    const wsReadable = new ReadableStream({
+        start(controller) {
+            serverWS.addEventListener('message', e => controller.enqueue(new Uint8Array(e.data)));
+            serverWS.addEventListener('close', () => controller.close());
+            serverWS.addEventListener('error', e => controller.error(e));
+        }
+    });
+
+    const reader = wsReadable.getReader();
+    let remoteSocket = null;
+    let vlessHeader = null;
+
     try {
-      _bIVZMjWOCCEfaAhM = await connect({
-        hostname: _pnkTUXBGiREcOSfg.addressRemote,
-        port: _pnkTUXBGiREcOSfg.portRemote
-      }, {
-        allowHalfOpen: true
-      });
-    } catch {
-      _bIVZMjWOCCEfaAhM = await connect({
-        hostname: _vVwiDUUvulyxyOqq,
-        port: _FpArNnfOkKILXNeL
-      }, {
-        allowHalfOpen: true
-      });
+        // 1. 解析首包
+        const { done, value } = await reader.read();
+        if (done) return;
+
+        const header = parseVLESSHeader(value);
+        if (header.hasError) throw new Error(header.message);
+
+        vlessHeader = new Uint8Array([header.vlessVersion[0], 0]);
+        const firstPayload = value.slice(header.rawDataIndex);
+
+        // 2. 尝试连接逻辑
+        async function tryConnect(host, port) {
+            const socket = await connect({ hostname: host, port: port }, { allowHalfOpen: true });
+            const writer = socket.writable.getWriter();
+            await writer.write(firstPayload); // 写入首包数据
+            writer.releaseLock();
+            return socket;
+        }
+
+        // --- 核心修复：优先直连 YouTube/Google ---
+        try {
+            remoteSocket = await tryConnect(header.addressRemote, header.portRemote);
+        } catch (e) {
+            // 只有直连失败（如访问 ip.sb）才进入这里
+            console.log(`直连失败: ${header.addressRemote}，尝试 Fallback`);
+            remoteSocket = await tryConnect(_JeHxQnQHudDPWbyN, _JsGTkSTJgBtAOVZl);
+        }
+
+        // 3. 建立双向管道 (完全参考第二份代码的 pipeTo 逻辑，确保 YouTube 不断连)
+        const remoteToWs = remoteSocket.readable.pipeTo(new WritableStream({
+            start() { /* 不在这里发 header，避免逻辑混乱 */ },
+            write(chunk) {
+                if (vlessHeader) {
+                    const combined = new Uint8Array(vlessHeader.length + chunk.length);
+                    combined.set(vlessHeader);
+                    combined.set(chunk, vlessHeader.length);
+                    serverWS.send(combined);
+                    vlessHeader = null; // 发送一次后置空
+                } else {
+                    serverWS.send(chunk);
+                }
+            },
+            close() { if (serverWS.readyState === 1) serverWS.close(); }
+        }));
+
+        const wsToRemote = new WritableStream({
+            async write(chunk) {
+                const writer = remoteSocket.writable.getWriter();
+                await writer.write(chunk);
+                writer.releaseLock();
+            },
+            close() { remoteSocket.close(); }
+        });
+
+        // 继续读取 WebSocket 剩余数据并写入远程
+        await reader.read().then(function process({ done, value }) {
+            if (done) return wsToRemote.close();
+            return wsToRemote.getWriter().write(value).then(() => reader.read().then(process));
+        });
+
+    } catch (err) {
+        console.error("Handler Error:", err);
+    } finally {
+        if (remoteSocket) remoteSocket.close();
+        if (serverWS.readyState === 1) serverWS.close();
     }
-    const _THQzHtDqRkiXCXBU = _bIVZMjWOCCEfaAhM.writable.getWriter();
-    await _THQzHtDqRkiXCXBU.write(_BgVcHknuPzanBPbC);
-    _THQzHtDqRkiXCXBU.releaseLock();
-    const _yHycNNXgUFgZYqMP = _tYvGNYvWIDJMQxZl(_bIVZMjWOCCEfaAhM, _zDnzfATLqPjBjHWg, _rXfvkgnUeRnIGUII);
-    const _AENwCpPcVgfrSINP = _CKgwzlxxUMqqnoPQ(_SdIMwkcdPQuCefgJ, _bIVZMjWOCCEfaAhM);
-    await Promise.race([_yHycNNXgUFgZYqMP, _AENwCpPcVgfrSINP]);
-  } catch (_iALhJWAeuZDzeAxq) {} finally {
-    try {
-      _SdIMwkcdPQuCefgJ.releaseLock();
-    } catch {}
-    if (_bIVZMjWOCCEfaAhM) try {
-      _bIVZMjWOCCEfaAhM.close();
-    } catch {}
-    if (_zDnzfATLqPjBjHWg.readyState === 1) try {
-      _zDnzfATLqPjBjHWg.close();
-    } catch {}
-  }
 }
-async function _tYvGNYvWIDJMQxZl(_bIVZMjWOCCEfaAhM, _uNqSJypHNndQhNeG, _rXfvkgnUeRnIGUII) {
-  const _SdIMwkcdPQuCefgJ = _bIVZMjWOCCEfaAhM.readable.getReader();
-  let _XeFoJOwCswYRHndz = false;
-  try {
-    while (true) {
-      const {
-        done: _QKlfGnGfeNrhPtrC,
-        value: _GKDJUkDXogrnjAIy
-      } = await _SdIMwkcdPQuCefgJ.read();
-      if (_QKlfGnGfeNrhPtrC || _uNqSJypHNndQhNeG.readyState !== 1) break;
-      if (!_XeFoJOwCswYRHndz) {
-        const _FtojNLPnBmUxhDVa = new Uint8Array(_rXfvkgnUeRnIGUII.byteLength + _GKDJUkDXogrnjAIy.byteLength);
-        _FtojNLPnBmUxhDVa.set(_rXfvkgnUeRnIGUII, 0);
-        _FtojNLPnBmUxhDVa.set(_GKDJUkDXogrnjAIy, _rXfvkgnUeRnIGUII.byteLength);
-        _uNqSJypHNndQhNeG.send(_FtojNLPnBmUxhDVa);
-        _XeFoJOwCswYRHndz = true;
-      } else {
-        _uNqSJypHNndQhNeG.send(_GKDJUkDXogrnjAIy);
-      }
+
+// 保持不变的解析逻辑
+function parseVLESSHeader(buffer) {
+    if (buffer.byteLength < 24) return { hasError: true, message: 'Short Header' };
+    const view = new DataView(buffer.buffer);
+    const uuid = Array.from(new Uint8Array(buffer.slice(1, 17))).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (uuid !== _rcHzgeggsXmfUWrW.replace(/-/g, '')) return { hasError: true, message: 'Unauthorized' };
+
+    let offset = 17;
+    const addonsLen = view.getUint8(offset);
+    offset += 1 + addonsLen + 1; // cmd
+    const port = view.getUint16(offset);
+    offset += 2;
+    const addrType = view.getUint8(offset);
+    offset += 1;
+
+    let address = '';
+    if (addrType === 1) {
+        address = Array.from(new Uint8Array(buffer.slice(offset, offset + 4))).join('.');
+        offset += 4;
+    } else if (addrType === 2) {
+        const len = view.getUint8(offset);
+        offset += 1;
+        address = new TextDecoder().decode(buffer.slice(offset, offset + len));
+        offset += len;
     }
-  } finally {
-    _SdIMwkcdPQuCefgJ.releaseLock();
-  }
-}
-async function _CKgwzlxxUMqqnoPQ(_SdIMwkcdPQuCefgJ, _bIVZMjWOCCEfaAhM) {
-  const _THQzHtDqRkiXCXBU = _bIVZMjWOCCEfaAhM.writable.getWriter();
-  try {
-    while (true) {
-      const {
-        done: _QKlfGnGfeNrhPtrC,
-        value: _GKDJUkDXogrnjAIy
-      } = await _SdIMwkcdPQuCefgJ.read();
-      if (_QKlfGnGfeNrhPtrC) break;
-      await _THQzHtDqRkiXCXBU.write(_GKDJUkDXogrnjAIy);
-    }
-  } finally {
-    try {
-      _THQzHtDqRkiXCXBU.releaseLock();
-    } catch {}
-  }
-}
-function _SkdQYqzKfVCbDJdq(_uNqSJypHNndQhNeG) {
-  return new ReadableStream({
-    start(_DYuEBcZbsrERdXNT) {
-      _uNqSJypHNndQhNeG.addEventListener('message', _oFompoaQDqTJsOoB => _DYuEBcZbsrERdXNT.enqueue(new Uint8Array(_oFompoaQDqTJsOoB.data)));
-      _uNqSJypHNndQhNeG.addEventListener('close', () => _DYuEBcZbsrERdXNT.close());
-      _uNqSJypHNndQhNeG.addEventListener('error', () => _DYuEBcZbsrERdXNT.close());
-    }
-  });
-}
-function _yDjlFCFkFulDlEdh(_eGiySjdHaoTMjyVS) {
-  if (_eGiySjdHaoTMjyVS.byteLength < 24) return {
-    hasError: true
-  };
-  const _qsItakeIGBwoJYYW = new DataView(_eGiySjdHaoTMjyVS.buffer);
-  const _oOeFlSPIgGILpbMP = Array.from(new Uint8Array(_eGiySjdHaoTMjyVS.slice(1, 17))).map(_dgedNtlUYehYFnyc => _dgedNtlUYehYFnyc.toString(16).padStart(2, '0')).join('');
-  if (_oOeFlSPIgGILpbMP !== _mbhCCWIFhtvkFufm.replace(/-/g, '')) return {
-    hasError: true
-  };
-  let _fSdrOmGnfKSuBHUL = 18 + _qsItakeIGBwoJYYW.getUint8(17);
-  const _AMvlNpXsCrFqEKNm = _qsItakeIGBwoJYYW.getUint16(_fSdrOmGnfKSuBHUL + 1);
-  const _qMVlKYsVzjszNvvg = _qsItakeIGBwoJYYW.getUint8(_fSdrOmGnfKSuBHUL + 3);
-  let _DEZMCDHlDKxOqUTL = '';
-  _fSdrOmGnfKSuBHUL += 4;
-  if (_qMVlKYsVzjszNvvg === 1) _DEZMCDHlDKxOqUTL = Array.from(new Uint8Array(_eGiySjdHaoTMjyVS.slice(_fSdrOmGnfKSuBHUL, _fSdrOmGnfKSuBHUL + 4))).join('.');else if (_qMVlKYsVzjszNvvg === 2) {
-    const _yeDjZARCtotrdWYv = _qsItakeIGBwoJYYW.getUint8(_fSdrOmGnfKSuBHUL);
-    _DEZMCDHlDKxOqUTL = new TextDecoder().decode(_eGiySjdHaoTMjyVS.slice(_fSdrOmGnfKSuBHUL + 1, _fSdrOmGnfKSuBHUL + 1 + _yeDjZARCtotrdWYv));
-  }
-  return {
-    hasError: false,
-    addressRemote: _DEZMCDHlDKxOqUTL,
-    portRemote: _AMvlNpXsCrFqEKNm,
-    rawDataIndex: _eGiySjdHaoTMjyVS.byteLength,
-    vlessVersion: new Uint8Array(_eGiySjdHaoTMjyVS.slice(0, 1))
-  };
+    return { hasError: false, addressRemote: address, portRemote: port, rawDataIndex: offset, vlessVersion: new Uint8Array(buffer.slice(0, 1)) };
 }
