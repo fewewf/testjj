@@ -8,7 +8,7 @@ const _JsGTkSTJgBtAOVZl = 443;
 const WS_READY_STATE_OPEN = 1;
 
 const _KtFJDaQcgkFDwTLY = (_yRsSyhpBCxFbqNPU, _HpkuToMJSAvwPNva = 404) => {
-  // ... (此函数保持不变) ...
+  // ... (保持不变) ...
   const _XwbeLFBOTVlfgfaV = {
     timestamp: new Date().toISOString(),
     status: _HpkuToMJSAvwPNva,
@@ -33,7 +33,7 @@ const _KtFJDaQcgkFDwTLY = (_yRsSyhpBCxFbqNPU, _HpkuToMJSAvwPNva = 404) => {
 
 export default {
   async fetch(_gAaPbetxNIakJQKw) {
-    // ... (此函数保持不变) ...
+    // ... (保持不变) ...
     const _yRsSyhpBCxFbqNPU = new URL(_gAaPbetxNIakJQKw.url);
     if (_yRsSyhpBCxFbqNPU.pathname !== _cQndIdPFBwdwdfPS) {
       return _KtFJDaQcgkFDwTLY(_yRsSyhpBCxFbqNPU, 404);
@@ -54,6 +54,7 @@ export default {
     const [_cIMstliQdZbHDVpr, _zNeFASTClFTonTIr] = Object.values(_sdTNvSnQHgfISqwc);
     _zNeFASTClFTonTIr.accept();
 
+    // 不再等待，避免阻塞
     _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr).catch(_wozDXumapohYMyrU => {
       console.error("Critical WS Error:", _wozDXumapohYMyrU.message);
       try { _zNeFASTClFTonTIr.close(); } catch(e) {}
@@ -71,16 +72,15 @@ export default {
   }
 };
 
-// 独立的回退处理函数
-async function handleFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _clientReaderForFallback) {
+// 独立的回退处理函数 - 负责在回退场景下处理所有流量
+async function runFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _clientReader) {
     console.log("Fallback function started with proxy IP");
     let fallbackSocket = null;
-    let fallbackClientReader = _clientReaderForFallback; // 使用传入的 reader
     let webSocketClosed = false;
 
-    _zNeFASTClFTonTIr.addEventListener('close', () => {
-        webSocketClosed = true;
-    });
+    const closeListener = () => { webSocketClosed = true; };
+    _zNeFASTClFTonTIr.addEventListener('close', closeListener);
+    _zNeFASTClFTonTIr.addEventListener('error', closeListener);
 
     try {
         // 1. 创建到代理IP的新连接
@@ -90,88 +90,86 @@ async function handleFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _cl
         });
 
         // 2. 写入初始数据
-        const initialWriter = fallbackSocket.writable.getWriter();
-        await initialWriter.write(_initialData);
-        initialWriter.releaseLock();
+        const writer = fallbackSocket.writable.getWriter();
+        await writer.write(_initialData);
+        writer.releaseLock();
 
-        // 3. 启动两个新的独立循环来处理双向通信
-
-        // 客户端 -> 远程 (通过代理)
-        const fallbackClientToRemote = (async () => {
-            const writer = fallbackSocket.writable.getWriter();
-            try {
-                while (!webSocketClosed) {
-                    const { done, value } = await fallbackClientReader.read();
-                    if (done || webSocketClosed) break;
-                    await writer.write(value);
+        // 3. 启动双向通信 (使用传入的 _clientReader)
+        const fallbackTasks = await Promise.allSettled([
+            // 任务1: 客户端 -> 远程 (通过代理)
+            (async () => {
+                const w = fallbackSocket.writable.getWriter();
+                try {
+                    while (!webSocketClosed) {
+                        const { done, value } = await _clientReader.read();
+                        if (done || webSocketClosed) break;
+                        await w.write(value);
+                    }
+                } finally {
+                    w.releaseLock();
                 }
-            } catch (err) {
-                console.error("Fallback client->remote error:", err.message);
-            } finally {
-                writer.releaseLock();
-            }
-        })();
+            })(),
 
-        // 远程 (通过代理) -> 客户端
-        const fallbackRemoteToClient = (async () => {
-            const reader = fallbackSocket.readable.getReader();
-            let headerSent = false;
-            try {
-                while (!webSocketClosed) {
-                    const { done, value } = await reader.read();
-                    if (done || webSocketClosed) break;
+            // 任务2: 远程 (通过代理) -> 客户端
+            (async () => {
+                const r = fallbackSocket.readable.getReader();
+                let headerSent = false;
+                try {
+                    while (!webSocketClosed) {
+                        const { done, value } = await r.read();
+                        if (done || webSocketClosed) break;
 
-                    if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-                        if (!headerSent) {
-                            const combined = new Uint8Array(_vlessHeader.byteLength + value.byteLength);
-                            combined.set(_vlessHeader, 0);
-                            combined.set(value, _vlessHeader.byteLength);
-                            _zNeFASTClFTonTIr.send(combined);
-                            headerSent = true;
-                        } else {
-                            _zNeFASTClFTonTIr.send(value);
+                        if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
+                            if (!headerSent) {
+                                const combined = new Uint8Array(_vlessHeader.byteLength + value.byteLength);
+                                combined.set(_vlessHeader, 0);
+                                combined.set(value, _vlessHeader.byteLength);
+                                _zNeFASTClFTonTIr.send(combined);
+                                headerSent = true;
+                            } else {
+                                _zNeFASTClFTonTIr.send(value);
+                            }
                         }
                     }
+                } finally {
+                    r.releaseLock();
                 }
-            } catch (err) {
-                console.error("Fallback remote->client error:", err.message);
-            } finally {
-                reader.releaseLock();
-            }
-        })();
+            })()
+        ]);
 
-        await Promise.race([fallbackClientToRemote, fallbackRemoteToClient]);
+        // 检查是否有任务失败
+        for (const result of fallbackTasks) {
+            if (result.status === 'rejected') {
+                console.error("Fallback task failed:", result.reason);
+            }
+        }
 
     } catch (err) {
         console.error("Fallback function critical error:", err);
-        if (!webSocketClosed && _zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-            _zNeFASTClFTonTIr.close(1011, "Fallback failed");
-        }
     } finally {
+        _zNeFASTClFTonTIr.removeEventListener('close', closeListener);
+        _zNeFASTClFTonTIr.removeEventListener('error', closeListener);
         if (fallbackSocket) {
             try { fallbackSocket.close(); } catch(e) {}
         }
-        if (fallbackClientReader) {
-            try { fallbackClientReader.releaseLock(); } catch(e) {}
-        }
+        // 注意：不要在这里释放 _clientReader，它的生命周期由调用者管理
     }
 }
 
-
 async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
-  const _rQBZEdhdojOaQypG = _GWHvqQvdiYQMUGEh(_zNeFASTClFTonTIr);
+  const _clientReadableStream = _GWHvqQvdiYQMUGEh(_zNeFASTClFTonTIr);
   let _activeSocket = null;
   let _vlessHeader = null;
   let _initialData = null;
   let _useProxyIP = false;
   let _webSocketClosed = false;
-  let _fallbackTriggered = false;
 
-  const _clientReader = _rQBZEdhdojOaQypG.getReader();
+  // 获取 reader
+  const _clientReader = _clientReadableStream.getReader();
 
-  _zNeFASTClFTonTIr.addEventListener('close', () => {
-    _webSocketClosed = true;
-  });
+  const closeListener = () => { _webSocketClosed = true; };
+  _zNeFASTClFTonTIr.addEventListener('close', closeListener);
+  _zNeFASTClFTonTIr.addEventListener('error', closeListener);
 
   try {
     // 1. 读取第一个消息
@@ -195,7 +193,6 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
       writer.releaseLock();
     } catch (err) {
       console.log("Direct connection failed, using proxy IP immediately:", err.message);
-      // 如果直接连接都失败，立刻使用代理IP，不走回退逻辑
       _activeSocket = await connect({
         hostname: _JeHxQnQHudDPWbyN,
         port: _JsGTkSTJgBtAOVZl
@@ -206,84 +203,95 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
       _useProxyIP = true;
     }
 
-    // 3. 启动双向流处理
-    const clientToRemotePromise = (async () => {
-      const writer = _activeSocket.writable.getWriter();
-      try {
-        while (!_webSocketClosed && !_fallbackTriggered) {
-          const { done, value } = await _clientReader.read();
-          if (done || _webSocketClosed || _fallbackTriggered) break;
-          await writer.write(value);
-        }
-      } catch (err) {
-        // 忽略因回退触发的错误
-        if (!_fallbackTriggered) console.error("Client to remote error:", err.message);
-      } finally {
-        writer.releaseLock();
-      }
-    })();
+    // 3. 设置一个标志，表示是否已经转移了 reader 的所有权
+    let readerOwnershipTransferred = false;
 
-    const remoteToClientPromise = (async () => {
-      const reader = _activeSocket.readable.getReader();
-      let headerSent = false;
-      let hasData = false;
-      try {
-        while (!_webSocketClosed && !_fallbackTriggered) {
-          const { done, value } = await reader.read();
-          if (done || _webSocketClosed || _fallbackTriggered) break;
-
-          hasData = true;
-          if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-            if (!headerSent) {
-              const combined = new Uint8Array(_vlessHeader.byteLength + value.byteLength);
-              combined.set(_vlessHeader, 0);
-              combined.set(value, _vlessHeader.byteLength);
-              _zNeFASTClFTonTIr.send(combined);
-              headerSent = true;
-            } else {
-              _zNeFASTClFTonTIr.send(value);
+    // 4. 启动双向流处理
+    const results = await Promise.race([
+        // 客户端 -> 远程
+        (async () => {
+            const writer = _activeSocket.writable.getWriter();
+            try {
+                while (!_webSocketClosed && !readerOwnershipTransferred) {
+                    const { done, value } = await _clientReader.read();
+                    if (done || _webSocketClosed) break;
+                    await writer.write(value);
+                }
+            } finally {
+                writer.releaseLock();
             }
-          }
-        }
-      } catch (err) {
-        if (!_fallbackTriggered) console.error("Remote to client error:", err.message);
-      } finally {
-        reader.releaseLock();
+            return 'clientToRemoteDone';
+        })(),
 
-        // 4. 关键回退逻辑：没有数据、未使用代理、WebSocket还在、未触发过回退
-        if (!hasData && !_useProxyIP && !_webSocketClosed && !_fallbackTriggered) {
-          _fallbackTriggered = true;
-          console.log("No data received, triggering isolated fallback to proxy IP...");
+        // 远程 -> 客户端 (这个 Promise 会解析为 'fallbackTriggered' 或 'remoteToClientDone')
+        (async () => {
+            const reader = _activeSocket.readable.getReader();
+            let headerSent = false;
+            let hasData = false;
+            try {
+                while (!_webSocketClosed && !readerOwnershipTransferred) {
+                    const { done, value } = await reader.read();
+                    if (done || _webSocketClosed) break;
 
-          // 5. 粗暴但有效的清理：关闭旧 socket 并忽略所有错误
-          try { _activeSocket.close(); } catch (e) {}
-          _activeSocket = null;
+                    hasData = true;
+                    if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
+                        if (!headerSent) {
+                            const combined = new Uint8Array(_vlessHeader.byteLength + value.byteLength);
+                            combined.set(_vlessHeader, 0);
+                            combined.set(value, _vlessHeader.byteLength);
+                            _zNeFASTClFTonTIr.send(combined);
+                            headerSent = true;
+                        } else {
+                            _zNeFASTClFTonTIr.send(value);
+                        }
+                    }
+                }
+            } finally {
+                reader.releaseLock();
+            }
 
-          // 6. 启动独立的回退处理函数，并传入当前的 _clientReader
-          //    注意：这里我们不等待 (no await)，让回退函数在后台运行，同时当前函数可以结束。
-          handleFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _clientReader).catch(err => {
-              console.error("Unhandled error in fallback function:", err);
-          });
-        }
-      }
-    })();
+            // 5. 关键逻辑：如果没有数据，触发回退
+            if (!hasData && !_useProxyIP && !_webSocketClosed && !readerOwnershipTransferred) {
+                console.log("No data received, transferring reader ownership to fallback function...");
+                readerOwnershipTransferred = true; // 标记所有权已转移
 
-    await Promise.race([clientToRemotePromise, remoteToClientPromise]);
+                // 关闭旧 socket
+                if (_activeSocket) {
+                    try { _activeSocket.close(); } catch(e) {}
+                    _activeSocket = null;
+                }
+
+                // 启动独立的回退函数，并传入 reader（现在所有权属于它）
+                // 注意：我们不等待这个函数，让它在后台运行
+                runFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _clientReader)
+                    .catch(err => console.error("Unhandled error in runFallback:", err));
+
+                return 'fallbackTriggered';
+            }
+            return 'remoteToClientDone';
+        })()
+    ]);
+
+    // 如果结果是 'fallbackTriggered'，我们就让当前函数结束，让 runFallback 接管
+    if (results === 'fallbackTriggered') {
+        console.log("Main function exiting, fallback is now in charge.");
+        return; // 直接返回，不执行清理，因为 reader 已经移交
+    }
 
   } catch (_wozDXumapohYMyrU) {
-    if (!_webSocketClosed && !_fallbackTriggered) {
+    if (!_webSocketClosed) {
       console.error("HandleWS Error:", _wozDXumapohYMyrU.message);
     }
   } finally {
-    // 只有在没有触发回退的情况下，才在这里清理 _clientReader 和 _activeSocket
-    // 如果触发了回退，_clientReader 的所有权已经转移给了 handleFallback 函数
-    if (!_fallbackTriggered) {
+    // 只有在 reader 所有权没有被转移的情况下，才在这里清理
+    if (!readerOwnershipTransferred) {
         _clientReader.releaseLock();
-        if (_activeSocket) {
-            try { _activeSocket.close(); } catch {}
-        }
     }
-    // 如果回退已触发且 WebSocket 还开着，我们不再关闭它，因为回退函数会接管。
+    _zNeFASTClFTonTIr.removeEventListener('close', closeListener);
+    _zNeFASTClFTonTIr.removeEventListener('error', closeListener);
+    if (_activeSocket) {
+        try { _activeSocket.close(); } catch {}
+    }
   }
 }
 
@@ -305,7 +313,7 @@ function _GWHvqQvdiYQMUGEh(_YHRMXlCNQXcLTQTX) {
 }
 
 function _MkxTgzbSwfhpsfJi(_QjfgPTDmcvdvEOSN) {
-  // ... (此函数完全保持不变) ...
+  // ... (完全保持不变) ...
   if (_QjfgPTDmcvdvEOSN.byteLength < 24) return {
     hasError: true,
     message: 'Invalid header'
