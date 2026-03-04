@@ -33,33 +33,31 @@ const API_ERROR_RESPONSE = (url, status = 404) => {
 export default {
     async fetch(request) {
         const url = new URL(request.url);
-        const userAgent = request.headers.get('User-Agent') || '';
+        const userAgent = (request.headers.get('User-Agent') || '').toLowerCase();
 
-        // 1. 安全过滤：拦截常见的扫描器特征 (解决日志中出现的 Go-http-client)
-        if (userAgent.includes('Go-http-client') || userAgent === '' || userAgent.includes('python-requests')) {
-            return API_ERROR_RESPONSE(url, 403);
-        }
-
-        // 2. 路径深度验证
+        // 1. 路径验证：这是第一道防线，路径不对直接 404
         if (url.pathname !== SECRET_PATH) {
             return API_ERROR_RESPONSE(url, 404);
         }
 
-        // 3. 握手验证：非 WS 请求返回动态健康检查 (模拟正常 API 行为)
+        // 2. 简单爬虫/扫描器拦截：拦截无 UA 或 Python 脚本
+        if (userAgent === '' || userAgent.includes('python-requests')) {
+            return API_ERROR_RESPONSE(url, 403);
+        }
+
+        // 3. 协议验证：路径对了但不是 WS 请求，返回健康检查 JSON
         if (request.headers.get('Upgrade') !== 'websocket') {
-            const uptime = Math.floor(Math.random() * 5000) + 1200;
             return new Response(JSON.stringify({ 
                 status: "UP", 
-                details: {
-                    node: "us-west-api-01",
-                    uptime: `${uptime}s`,
-                    load: [0.12, 0.05, 0.01]
-                }
+                version: "2.4.2-RELEASE",
+                timestamp: new Date().toISOString()
             }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
+
+        
 
         // 4. 处理 WebSocket
         try {
