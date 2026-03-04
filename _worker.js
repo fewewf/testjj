@@ -52,10 +52,13 @@ export default {
     const _sdTNvSnQHgfISqwc = new WebSocketPair();
     const [_cIMstliQdZbHDVpr, _zNeFASTClFTonTIr] = Object.values(_sdTNvSnQHgfISqwc);
     _zNeFASTClFTonTIr.accept();
+    
+    // 不等待，避免阻塞
     _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr).catch(_wozDXumapohYMyrU => {
       console.error("Critical WS Error:", _wozDXumapohYMyrU.message);
-      _zNeFASTClFTonTIr.close();
+      try { _zNeFASTClFTonTIr.close(); } catch(e) {}
     });
+    
     return new Response(null, {
       status: 101,
       webSocket: _cIMstliQdZbHDVpr,
@@ -74,10 +77,15 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
   let _VMwvXLIMJYZDGMLS = null;
   let _IxamNRThaYlJuRBk = null;
   let _useProxyIP = false;
-  let _retryCount = 0;
-  const MAX_RETRIES = 2;
+  let _isFallbackInProgress = false;
+  let _webSocketClosed = false;
   
   const _mbaxDGhgHkhYiXMf = _rQBZEdhdojOaQypG.getReader();
+  
+  // 监听WebSocket关闭事件
+  _zNeFASTClFTonTIr.addEventListener('close', () => {
+    _webSocketClosed = true;
+  });
   
   try {
     const {
@@ -85,7 +93,7 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
       value: _xfAKCMFjFRznTnje
     } = await _mbaxDGhgHkhYiXMf.read();
     
-    if (_ViOGcMXtboZDHxcp) return;
+    if (_ViOGcMXtboZDHxcp || _webSocketClosed) return;
     
     const _TyFwoqvKDFIbgSAh = _MkxTgzbSwfhpsfJi(_xfAKCMFjFRznTnje);
     if (_TyFwoqvKDFIbgSAh.hasError) throw new Error(_TyFwoqvKDFIbgSAh.message);
@@ -99,162 +107,146 @@ async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
         return await connect({
           hostname: _JeHxQnQHudDPWbyN,
           port: _JsGTkSTJgBtAOVZl
-        }, {
-          allowHalfOpen: true
         });
       } else {
         return await connect({
           hostname: _TyFwoqvKDFIbgSAh.addressRemote,
           port: _TyFwoqvKDFIbgSAh.portRemote
-        }, {
-          allowHalfOpen: true
         });
       }
     }
     
-    // 定义重试函数
-    async function attemptConnectionWithRetry(useProxy = false) {
-      try {
-        const socket = await createConnection(useProxy);
-        const writer = socket.writable.getWriter();
-        await writer.write(_IxamNRThaYlJuRBk);
-        writer.releaseLock();
-        return socket;
-      } catch (err) {
-        if (_retryCount < MAX_RETRIES) {
-          _retryCount++;
-          console.log(`Connection attempt ${_retryCount} failed, retrying...`);
-          return attemptConnectionWithRetry(!useProxy);
-        }
-        throw err;
-      }
-    }
-    
-    // 尝试首次连接
+    // 先尝试直接连接
     try {
-      _jJUejlszoJxKpVyr = await attemptConnectionWithRetry(false);
+      _jJUejlszoJxKpVyr = await createConnection(false);
+      const writer = _jJUejlszoJxKpVyr.writable.getWriter();
+      await writer.write(_IxamNRThaYlJuRBk);
+      writer.releaseLock();
     } catch (err) {
-      console.log("Direct connection failed, trying proxy IP...");
+      console.log("Direct connection failed, using proxy IP:", err.message);
       _jJUejlszoJxKpVyr = await createConnection(true);
+      const writer = _jJUejlszoJxKpVyr.writable.getWriter();
+      await writer.write(_IxamNRThaYlJuRBk);
+      writer.releaseLock();
       _useProxyIP = true;
     }
     
-    // 设置数据流转发，带智能回退
-    const _sidrNzxcXsWcFyfs = _YXLwwGKkeKknZtyk(
-      _jJUejlszoJxKpVyr, 
-      _zNeFASTClFTonTIr, 
-      _VMwvXLIMJYZDGMLS,
-      async () => {
-        // 回退函数：当没有数据返回时尝试使用代理IP重连
-        if (!_useProxyIP) {
-          console.log("No data received, falling back to proxy IP...");
-          try {
-            // 关闭旧连接
-            if (_jJUejlszoJxKpVyr) {
-              try { _jJUejlszoJxKpVyr.close(); } catch(e) {}
-            }
-            // 使用代理IP创建新连接
-            const newSocket = await connect({
-              hostname: _JeHxQnQHudDPWbyN,
-              port: _JsGTkSTJgBtAOVZl
-            }, {
-              allowHalfOpen: true
-            });
+    // 创建两个方向的流
+    const [clientToRemotePromise, remoteToClientPromise] = await Promise.all([
+      // 客户端 -> 远程
+      (async () => {
+        const writer = _jJUejlszoJxKpVyr.writable.getWriter();
+        try {
+          while (!_webSocketClosed) {
+            const { done, value } = await _mbaxDGhgHkhYiXMf.read();
+            if (done || _webSocketClosed) break;
+            await writer.write(value);
+          }
+        } finally {
+          writer.releaseLock();
+        }
+      })(),
+      
+      // 远程 -> 客户端
+      (async () => {
+        const reader = _jJUejlszoJxKpVyr.readable.getReader();
+        let headerSent = false;
+        let hasData = false;
+        
+        try {
+          while (!_webSocketClosed) {
+            const { done, value } = await reader.read();
+            if (done || _webSocketClosed) break;
             
-            // 重新写入初始数据
-            const writer = newSocket.writable.getWriter();
-            await writer.write(_IxamNRThaYlJuRBk);
-            writer.releaseLock();
+            hasData = true;
             
-            // 重新建立管道
-            _jJUejlszoJxKpVyr = newSocket;
-            _useProxyIP = true;
-            
-            // 重新启动数据转发
-            _YXLwwGKkeKknZtyk(
-              newSocket, 
-              _zNeFASTClFTonTIr, 
-              _VMwvXLIMJYZDGMLS,
-              null
-            ).catch(console.error);
-            
-          } catch (fallbackErr) {
-            console.error("Fallback connection failed:", fallbackErr);
             if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-              _zNeFASTClFTonTIr.close(1011, "Fallback failed");
+              if (!headerSent) {
+                const combined = new Uint8Array(_VMwvXLIMJYZDGMLS.byteLength + value.byteLength);
+                combined.set(_VMwvXLIMJYZDGMLS, 0);
+                combined.set(value, _VMwvXLIMJYZDGMLS.byteLength);
+                _zNeFASTClFTonTIr.send(combined);
+                headerSent = true;
+              } else {
+                _zNeFASTClFTonTIr.send(value);
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+          
+          // 如果没有收到任何数据且不是代理IP模式，尝试回退
+          if (!hasData && !_useProxyIP && !_webSocketClosed && !_isFallbackInProgress) {
+            _isFallbackInProgress = true;
+            console.log("No data received, attempting fallback to proxy IP...");
+            
+            try {
+              // 关闭旧连接
+              if (_jJUejlszoJxKpVyr) {
+                try { _jJUejlszoJxKpVyr.close(); } catch(e) {}
+              }
+              
+              // 创建新连接（使用代理IP）
+              const newSocket = await connect({
+                hostname: _JeHxQnQHudDPWbyN,
+                port: _JsGTkSTJgBtAOVZl
+              });
+              
+              // 写入初始数据
+              const newWriter = newSocket.writable.getWriter();
+              await newWriter.write(_IxamNRThaYlJuRBk);
+              newWriter.releaseLock();
+              
+              _useProxyIP = true;
+              
+              // 重新建立从远程到客户端的流
+              const newReader = newSocket.readable.getReader();
+              let newHeaderSent = false;
+              
+              while (!_webSocketClosed) {
+                const { done, value } = await newReader.read();
+                if (done || _webSocketClosed) break;
+                
+                if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
+                  if (!newHeaderSent) {
+                    const combined = new Uint8Array(_VMwvXLIMJYZDGMLS.byteLength + value.byteLength);
+                    combined.set(_VMwvXLIMJYZDGMLS, 0);
+                    combined.set(value, _VMwvXLIMJYZDGMLS.byteLength);
+                    _zNeFASTClFTonTIr.send(combined);
+                    newHeaderSent = true;
+                  } else {
+                    _zNeFASTClFTonTIr.send(value);
+                  }
+                }
+              }
+              
+              newReader.releaseLock();
+              
+            } catch (fallbackErr) {
+              console.error("Fallback failed:", fallbackErr);
+              if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
+                _zNeFASTClFTonTIr.close(1011, "Fallback failed");
+              }
             }
           }
         }
-      }
-    );
+      })()
+    ]);
     
-    const _msNNYJilORBFjlRr = (async () => {
-      const _UNaMwSaJkLsWDhiI = _jJUejlszoJxKpVyr.writable.getWriter();
-      try {
-        while (true) {
-          const {
-            done: _ViOGcMXtboZDHxcp,
-            value: _xfAKCMFjFRznTnje
-          } = await _mbaxDGhgHkhYiXMf.read();
-          if (_ViOGcMXtboZDHxcp) break;
-          await _UNaMwSaJkLsWDhiI.write(_xfAKCMFjFRznTnje);
-        }
-      } finally {
-        _UNaMwSaJkLsWDhiI.releaseLock();
-      }
-    })();
-    
-    await Promise.race([_sidrNzxcXsWcFyfs, _msNNYJilORBFjlRr]);
+    // 等待任意一个流结束
+    await Promise.race([clientToRemotePromise, remoteToClientPromise]);
     
   } catch (_wozDXumapohYMyrU) {
-    console.error("HandleWS Error:", _wozDXumapohYMyrU.message);
+    if (!_webSocketClosed) {
+      console.error("HandleWS Error:", _wozDXumapohYMyrU.message);
+    }
   } finally {
     _mbaxDGhgHkhYiXMf.releaseLock();
     if (_jJUejlszoJxKpVyr) {
       try { _jJUejlszoJxKpVyr.close(); } catch {}
     }
-    if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-      _zNeFASTClFTonTIr.close();
-    }
-  }
-}
-
-// 修正：将 _jJUejlszoJKpVyr 改为 _jJUejlszoJxKpVyr
-async function _YXLwwGKkeKknZtyk(_jJUejlszoJxKpVyr, _YHRMXlCNQXcLTQTX, _fjzIINYImWgZaPDP, _fallbackCallback = null) {
-  const _mbaxDGhgHkhYiXMf = _jJUejlszoJxKpVyr.readable.getReader();  // 修正这里！
-  let _jVqfgMYADQeWjGUf = false;
-  let _hasIncomingData = false;
-  
-  try {
-    while (true) {
-      const {
-        done: _ViOGcMXtboZDHxcp,
-        value: _xfAKCMFjFRznTnje
-      } = await _mbaxDGhgHkhYiXMf.read();
-      
-      if (_ViOGcMXtboZDHxcp) break;
-      
-      _hasIncomingData = true;
-      
-      if (_YHRMXlCNQXcLTQTX.readyState !== WS_READY_STATE_OPEN) break;
-      
-      if (!_jVqfgMYADQeWjGUf) {
-        const _gBTJNTavaUowSECF = new Uint8Array(_fjzIINYImWgZaPDP.byteLength + _xfAKCMFjFRznTnje.byteLength);
-        _gBTJNTavaUowSECF.set(_fjzIINYImWgZaPDP, 0);
-        _gBTJNTavaUowSECF.set(_xfAKCMFjFRznTnje, _fjzIINYImWgZaPDP.byteLength);
-        _YHRMXlCNQXcLTQTX.send(_gBTJNTavaUowSECF);
-        _jVqfgMYADQeWjGUf = true;
-      } else {
-        _YHRMXlCNQXcLTQTX.send(_xfAKCMFjFRznTnje);
-      }
-    }
-  } finally {
-    _mbaxDGhgHkhYiXMf.releaseLock();
-    
-    // 如果没有收到任何数据且提供了回退回调，则触发回退
-    if (!_hasIncomingData && _fallbackCallback) {
-      console.log("No incoming data detected, triggering fallback...");
-      await _fallbackCallback();
+    if (!_webSocketClosed && _zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
+      try { _zNeFASTClFTonTIr.close(); } catch {}
     }
   }
 }
@@ -268,8 +260,8 @@ function _GWHvqQvdiYQMUGEh(_YHRMXlCNQXcLTQTX) {
       _YHRMXlCNQXcLTQTX.addEventListener('close', () => 
         _umAYPzwPqpEFUFDI.close()
       );
-      _YHRMXlCNQXcLTQTX.addEventListener('error', _fVheVUSIAbHdlEXQ => 
-        _umAYPzwPqpEFUFDI.error(_fVheVUSIAbHdlEXQ)
+      _YHRMXlCNQXcLTQTX.addEventListener('error', () => 
+        _umAYPzwPqpEFUFDI.error(new Error('WebSocket error'))
       );
     }
   });
