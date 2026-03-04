@@ -6,9 +6,9 @@ const _JeHxQnQHudDPWbyN = 'ProxyIP.FR.CMLiussss.net';
 const _JsGTkSTJgBtAOVZl = 443;
 
 const WS_READY_STATE_OPEN = 1;
+const CONNECTION_TIMEOUT = 5000; // 5秒超时
 
 const _KtFJDaQcgkFDwTLY = (_yRsSyhpBCxFbqNPU, _HpkuToMJSAvwPNva = 404) => {
-  // ... (保持不变) ...
   const _XwbeLFBOTVlfgfaV = {
     timestamp: new Date().toISOString(),
     status: _HpkuToMJSAvwPNva,
@@ -33,7 +33,6 @@ const _KtFJDaQcgkFDwTLY = (_yRsSyhpBCxFbqNPU, _HpkuToMJSAvwPNva = 404) => {
 
 export default {
   async fetch(_gAaPbetxNIakJQKw) {
-    // ... (保持不变) ...
     const _yRsSyhpBCxFbqNPU = new URL(_gAaPbetxNIakJQKw.url);
     if (_yRsSyhpBCxFbqNPU.pathname !== _cQndIdPFBwdwdfPS) {
       return _KtFJDaQcgkFDwTLY(_yRsSyhpBCxFbqNPU, 404);
@@ -50,16 +49,17 @@ export default {
         }
       });
     }
+    
     const _sdTNvSnQHgfISqwc = new WebSocketPair();
     const [_cIMstliQdZbHDVpr, _zNeFASTClFTonTIr] = Object.values(_sdTNvSnQHgfISqwc);
     _zNeFASTClFTonTIr.accept();
-
-    // 不再等待，避免阻塞
-    _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr).catch(_wozDXumapohYMyrU => {
-      console.error("Critical WS Error:", _wozDXumapohYMyrU.message);
+    
+    // 直接处理，不等待
+    handleWebSocket(_zNeFASTClFTonTIr).catch(err => {
+      console.error("WebSocket Error:", err.message);
       try { _zNeFASTClFTonTIr.close(); } catch(e) {}
     });
-
+    
     return new Response(null, {
       status: 101,
       webSocket: _cIMstliQdZbHDVpr,
@@ -72,292 +72,237 @@ export default {
   }
 };
 
-// 独立的回退处理函数 - 负责在回退场景下处理所有流量
-async function runFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _clientReader) {
-    console.log("Fallback function started with proxy IP");
-    let fallbackSocket = null;
-    let webSocketClosed = false;
-
-    const closeListener = () => { webSocketClosed = true; };
-    _zNeFASTClFTonTIr.addEventListener('close', closeListener);
-    _zNeFASTClFTonTIr.addEventListener('error', closeListener);
-
-    try {
-        // 1. 创建到代理IP的新连接
-        fallbackSocket = await connect({
-            hostname: _JeHxQnQHudDPWbyN,
-            port: _JsGTkSTJgBtAOVZl
-        });
-
-        // 2. 写入初始数据
-        const writer = fallbackSocket.writable.getWriter();
-        await writer.write(_initialData);
-        writer.releaseLock();
-
-        // 3. 启动双向通信 (使用传入的 _clientReader)
-        const fallbackTasks = await Promise.allSettled([
-            // 任务1: 客户端 -> 远程 (通过代理)
-            (async () => {
-                const w = fallbackSocket.writable.getWriter();
-                try {
-                    while (!webSocketClosed) {
-                        const { done, value } = await _clientReader.read();
-                        if (done || webSocketClosed) break;
-                        await w.write(value);
-                    }
-                } finally {
-                    w.releaseLock();
-                }
-            })(),
-
-            // 任务2: 远程 (通过代理) -> 客户端
-            (async () => {
-                const r = fallbackSocket.readable.getReader();
-                let headerSent = false;
-                try {
-                    while (!webSocketClosed) {
-                        const { done, value } = await r.read();
-                        if (done || webSocketClosed) break;
-
-                        if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-                            if (!headerSent) {
-                                const combined = new Uint8Array(_vlessHeader.byteLength + value.byteLength);
-                                combined.set(_vlessHeader, 0);
-                                combined.set(value, _vlessHeader.byteLength);
-                                _zNeFASTClFTonTIr.send(combined);
-                                headerSent = true;
-                            } else {
-                                _zNeFASTClFTonTIr.send(value);
-                            }
-                        }
-                    }
-                } finally {
-                    r.releaseLock();
-                }
-            })()
-        ]);
-
-        // 检查是否有任务失败
-        for (const result of fallbackTasks) {
-            if (result.status === 'rejected') {
-                console.error("Fallback task failed:", result.reason);
-            }
-        }
-
-    } catch (err) {
-        console.error("Fallback function critical error:", err);
-    } finally {
-        _zNeFASTClFTonTIr.removeEventListener('close', closeListener);
-        _zNeFASTClFTonTIr.removeEventListener('error', closeListener);
-        if (fallbackSocket) {
-            try { fallbackSocket.close(); } catch(e) {}
-        }
-        // 注意：不要在这里释放 _clientReader，它的生命周期由调用者管理
-    }
-}
-
-async function _QlxgSaLbCagSZvDa(_zNeFASTClFTonTIr) {
-  const _clientReadableStream = _GWHvqQvdiYQMUGEh(_zNeFASTClFTonTIr);
-  let _activeSocket = null;
-  let _vlessHeader = null;
-  let _initialData = null;
-  let _useProxyIP = false;
-  let _webSocketClosed = false;
-
-  // 获取 reader
-  const _clientReader = _clientReadableStream.getReader();
-
-  const closeListener = () => { _webSocketClosed = true; };
-  _zNeFASTClFTonTIr.addEventListener('close', closeListener);
-  _zNeFASTClFTonTIr.addEventListener('error', closeListener);
-
+async function handleWebSocket(ws) {
+  let targetSocket = null;
+  let wsClosed = false;
+  
+  // 监听关闭事件
+  ws.addEventListener('close', () => { wsClosed = true; });
+  ws.addEventListener('error', () => { wsClosed = true; });
+  
   try {
-    // 1. 读取第一个消息
-    const { done: firstDone, value: firstMessage } = await _clientReader.read();
-    if (firstDone || _webSocketClosed) return;
-
-    const parsedHeader = _MkxTgzbSwfhpsfJi(firstMessage);
-    if (parsedHeader.hasError) throw new Error(parsedHeader.message);
-
-    _vlessHeader = new Uint8Array([parsedHeader.vlessVersion[0], 0]);
-    _initialData = firstMessage.slice(parsedHeader.rawDataIndex);
-
-    // 2. 尝试直接连接
+    // 1. 创建WebSocket可读流
+    const wsReader = createWebSocketReader(ws).getReader();
+    
+    // 2. 读取第一个消息（VLESS头）
+    const { value: firstMessage } = await wsReader.read();
+    if (!firstMessage || wsClosed) return;
+    
+    const parsed = parseVLESSHeader(firstMessage);
+    if (parsed.hasError) throw new Error(parsed.message);
+    
+    const vlessHeader = new Uint8Array([parsed.vlessVersion[0], 0]);
+    const initialData = firstMessage.slice(parsed.rawDataIndex);
+    
+    // 3. 先尝试直接连接
+    let useProxy = false;
     try {
-      _activeSocket = await connect({
-        hostname: parsedHeader.addressRemote,
-        port: parsedHeader.portRemote
-      });
-      const writer = _activeSocket.writable.getWriter();
-      await writer.write(_initialData);
-      writer.releaseLock();
+      console.log(`Attempting direct connection to ${parsed.addressRemote}:${parsed.portRemote}`);
+      targetSocket = await connectWithTimeout({
+        hostname: parsed.addressRemote,
+        port: parsed.portRemote
+      }, CONNECTION_TIMEOUT);
     } catch (err) {
-      console.log("Direct connection failed, using proxy IP immediately:", err.message);
-      _activeSocket = await connect({
+      console.log(`Direct connection failed (${err.message}), falling back to proxy IP`);
+      useProxy = true;
+      targetSocket = await connectWithTimeout({
         hostname: _JeHxQnQHudDPWbyN,
         port: _JsGTkSTJgBtAOVZl
-      });
-      const writer = _activeSocket.writable.getWriter();
-      await writer.write(_initialData);
-      writer.releaseLock();
-      _useProxyIP = true;
+      }, CONNECTION_TIMEOUT);
     }
-
-    // 3. 设置一个标志，表示是否已经转移了 reader 的所有权
-    let readerOwnershipTransferred = false;
-
-    // 4. 启动双向流处理
-    const results = await Promise.race([
-        // 客户端 -> 远程
-        (async () => {
-            const writer = _activeSocket.writable.getWriter();
-            try {
-                while (!_webSocketClosed && !readerOwnershipTransferred) {
-                    const { done, value } = await _clientReader.read();
-                    if (done || _webSocketClosed) break;
-                    await writer.write(value);
-                }
-            } finally {
-                writer.releaseLock();
+    
+    // 4. 写入初始数据
+    const writer = targetSocket.writable.getWriter();
+    await writer.write(initialData);
+    writer.releaseLock();
+    
+    // 5. 创建数据流管道
+    const pipeResults = await Promise.race([
+      // 客户端 -> 远程
+      (async () => {
+        const w = targetSocket.writable.getWriter();
+        try {
+          while (!wsClosed) {
+            const { done, value } = await wsReader.read();
+            if (done || wsClosed) break;
+            await w.write(value);
+          }
+        } finally {
+          w.releaseLock();
+        }
+        return 'clientDone';
+      })(),
+      
+      // 远程 -> 客户端
+      (async () => {
+        const r = targetSocket.readable.getReader();
+        let headerSent = false;
+        let dataReceived = false;
+        
+        try {
+          // 设置数据接收超时（3秒）
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Data timeout')), 3000);
+          });
+          
+          while (!wsClosed) {
+            const readPromise = r.read();
+            const { done, value } = await Promise.race([readPromise, timeoutPromise]);
+            
+            if (done || wsClosed) break;
+            
+            dataReceived = true;
+            
+            if (ws.readyState === WS_READY_STATE_OPEN) {
+              if (!headerSent) {
+                const combined = new Uint8Array(vlessHeader.byteLength + value.byteLength);
+                combined.set(vlessHeader, 0);
+                combined.set(value, vlessHeader.byteLength);
+                ws.send(combined);
+                headerSent = true;
+              } else {
+                ws.send(value);
+              }
             }
-            return 'clientToRemoteDone';
-        })(),
-
-        // 远程 -> 客户端 (这个 Promise 会解析为 'fallbackTriggered' 或 'remoteToClientDone')
-        (async () => {
-            const reader = _activeSocket.readable.getReader();
-            let headerSent = false;
-            let hasData = false;
-            try {
-                while (!_webSocketClosed && !readerOwnershipTransferred) {
-                    const { done, value } = await reader.read();
-                    if (done || _webSocketClosed) break;
-
-                    hasData = true;
-                    if (_zNeFASTClFTonTIr.readyState === WS_READY_STATE_OPEN) {
-                        if (!headerSent) {
-                            const combined = new Uint8Array(_vlessHeader.byteLength + value.byteLength);
-                            combined.set(_vlessHeader, 0);
-                            combined.set(value, _vlessHeader.byteLength);
-                            _zNeFASTClFTonTIr.send(combined);
-                            headerSent = true;
-                        } else {
-                            _zNeFASTClFTonTIr.send(value);
-                        }
-                    }
+          }
+        } catch (err) {
+          // 如果没有收到数据且还没用过代理IP，尝试重试
+          if (!dataReceived && !useProxy && !wsClosed) {
+            console.log("No data received, retrying with proxy IP...");
+            
+            // 清理旧连接
+            try { targetSocket.close(); } catch(e) {}
+            
+            // 使用代理IP重试
+            const retrySocket = await connectWithTimeout({
+              hostname: _JeHxQnQHudDPWbyN,
+              port: _JsGTkSTJgBtAOVZl
+            }, CONNECTION_TIMEOUT);
+            
+            // 重新写入初始数据
+            const retryWriter = retrySocket.writable.getWriter();
+            await retryWriter.write(initialData);
+            retryWriter.releaseLock();
+            
+            // 重新建立从远程到客户端的流
+            const retryReader = retrySocket.readable.getReader();
+            let retryHeaderSent = false;
+            
+            while (!wsClosed) {
+              const { done, value } = await retryReader.read();
+              if (done || wsClosed) break;
+              
+              if (ws.readyState === WS_READY_STATE_OPEN) {
+                if (!retryHeaderSent) {
+                  const combined = new Uint8Array(vlessHeader.byteLength + value.byteLength);
+                  combined.set(vlessHeader, 0);
+                  combined.set(value, vlessHeader.byteLength);
+                  ws.send(combined);
+                  retryHeaderSent = true;
+                } else {
+                  ws.send(value);
                 }
-            } finally {
-                reader.releaseLock();
+              }
             }
-
-            // 5. 关键逻辑：如果没有数据，触发回退
-            if (!hasData && !_useProxyIP && !_webSocketClosed && !readerOwnershipTransferred) {
-                console.log("No data received, transferring reader ownership to fallback function...");
-                readerOwnershipTransferred = true; // 标记所有权已转移
-
-                // 关闭旧 socket
-                if (_activeSocket) {
-                    try { _activeSocket.close(); } catch(e) {}
-                    _activeSocket = null;
-                }
-
-                // 启动独立的回退函数，并传入 reader（现在所有权属于它）
-                // 注意：我们不等待这个函数，让它在后台运行
-                runFallback(_zNeFASTClFTonTIr, _vlessHeader, _initialData, _clientReader)
-                    .catch(err => console.error("Unhandled error in runFallback:", err));
-
-                return 'fallbackTriggered';
-            }
-            return 'remoteToClientDone';
-        })()
+            
+            retryReader.releaseLock();
+          }
+        } finally {
+          r.releaseLock();
+        }
+        return 'remoteDone';
+      })()
     ]);
-
-    // 如果结果是 'fallbackTriggered'，我们就让当前函数结束，让 runFallback 接管
-    if (results === 'fallbackTriggered') {
-        console.log("Main function exiting, fallback is now in charge.");
-        return; // 直接返回，不执行清理，因为 reader 已经移交
-    }
-
-  } catch (_wozDXumapohYMyrU) {
-    if (!_webSocketClosed) {
-      console.error("HandleWS Error:", _wozDXumapohYMyrU.message);
+    
+  } catch (err) {
+    if (!wsClosed) {
+      console.error("Handle Error:", err.message);
     }
   } finally {
-    // 只有在 reader 所有权没有被转移的情况下，才在这里清理
-    if (!readerOwnershipTransferred) {
-        _clientReader.releaseLock();
+    if (targetSocket) {
+      try { targetSocket.close(); } catch(e) {}
     }
-    _zNeFASTClFTonTIr.removeEventListener('close', closeListener);
-    _zNeFASTClFTonTIr.removeEventListener('error', closeListener);
-    if (_activeSocket) {
-        try { _activeSocket.close(); } catch {}
+    if (!wsClosed && ws.readyState === WS_READY_STATE_OPEN) {
+      try { ws.close(); } catch(e) {}
     }
   }
 }
 
-// _GWHvqQvdiYQMUGEh 和 _MkxTgzbSwfhpsfJi 函数保持不变
-function _GWHvqQvdiYQMUGEh(_YHRMXlCNQXcLTQTX) {
+// 带超时的连接函数
+async function connectWithTimeout(options, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const socket = await connect(options, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return socket;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+// 创建WebSocket可读流
+function createWebSocketReader(ws) {
   return new ReadableStream({
-    start(_umAYPzwPqpEFUFDI) {
-      _YHRMXlCNQXcLTQTX.addEventListener('message', _fVheVUSIAbHdlEXQ => 
-        _umAYPzwPqpEFUFDI.enqueue(new Uint8Array(_fVheVUSIAbHdlEXQ.data))
-      );
-      _YHRMXlCNQXcLTQTX.addEventListener('close', () => 
-        _umAYPzwPqpEFUFDI.close()
-      );
-      _YHRMXlCNQXcLTQTX.addEventListener('error', () => 
-        _umAYPzwPqpEFUFDI.error(new Error('WebSocket error'))
-      );
+    start(controller) {
+      ws.addEventListener('message', event => {
+        controller.enqueue(new Uint8Array(event.data));
+      });
+      ws.addEventListener('close', () => controller.close());
+      ws.addEventListener('error', () => controller.error(new Error('WebSocket error')));
     }
   });
 }
 
-function _MkxTgzbSwfhpsfJi(_QjfgPTDmcvdvEOSN) {
-  // ... (完全保持不变) ...
-  if (_QjfgPTDmcvdvEOSN.byteLength < 24) return {
-    hasError: true,
-    message: 'Invalid header'
-  };
+// 解析VLESS头
+function parseVLESSHeader(buffer) {
+  if (buffer.byteLength < 24) return { hasError: true, message: 'Invalid header' };
   
-  const _igZwspOTXOUDIgpJ = new DataView(_QjfgPTDmcvdvEOSN.buffer);
-  const _mQuBmCqLfAfNDGqA = Array.from(new Uint8Array(_QjfgPTDmcvdvEOSN.slice(1, 17)))
-    .map(_UgvgeNOVlJZSBxZG => _UgvgeNOVlJZSBxZG.toString(16).padStart(2, '0'))
-    .join('');
-    
-  if (_mQuBmCqLfAfNDGqA !== _rcHzgeggsXmfUWrW.replace(/-/g, '')) {
+  const view = new DataView(buffer.buffer);
+  const uuidBytes = new Uint8Array(buffer.slice(1, 17));
+  const uuidHex = Array.from(uuidBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  const expectedUuid = _rcHzgeggsXmfUWrW.replace(/-/g, '');
+  
+  if (uuidHex !== expectedUuid) {
     return { hasError: true, message: 'Unauthorized' };
   }
   
-  const _jAStFyandqGWXqZR = _igZwspOTXOUDIgpJ.getUint8(17);
-  let _pWtFmyUVDkElICtU = 18 + _jAStFyandqGWXqZR;
-  const _fIfiLUgHAsoXFbhV = _igZwspOTXOUDIgpJ.getUint8(_pWtFmyUVDkElICtU++);
-  const _ytQFGPvxNQUjZTAs = _igZwspOTXOUDIgpJ.getUint16(_pWtFmyUVDkElICtU);
-  _pWtFmyUVDkElICtU += 2;
-  const _PnLELLVjNfMwYHCb = _igZwspOTXOUDIgpJ.getUint8(_pWtFmyUVDkElICtU++);
+  const optionsLen = view.getUint8(17);
+  let offset = 18 + optionsLen;
+  const port = view.getUint16(offset);
+  offset += 2;
+  const addrType = view.getUint8(offset++);
   
-  let _SnVNbvZshYkvCWQB = '';
-  
-  if (_PnLELLVjNfMwYHCb === 1) {
-    _SnVNbvZshYkvCWQB = Array.from(new Uint8Array(_QjfgPTDmcvdvEOSN.slice(_pWtFmyUVDkElICtU, _pWtFmyUVDkElICtU + 4))).join('.');
-    _pWtFmyUVDkElICtU += 4;
-  } else if (_PnLELLVjNfMwYHCb === 2) {
-    const _UGfWcImCHyxtNgQc = _igZwspOTXOUDIgpJ.getUint8(_pWtFmyUVDkElICtU++);
-    _SnVNbvZshYkvCWQB = new TextDecoder().decode(_QjfgPTDmcvdvEOSN.slice(_pWtFmyUVDkElICtU, _pWtFmyUVDkElICtU + _UGfWcImCHyxtNgQc));
-    _pWtFmyUVDkElICtU += _UGfWcImCHyxtNgQc;
-  } else if (_PnLELLVjNfMwYHCb === 3) {
-    _SnVNbvZshYkvCWQB = Array.from({
-      length: 8
-    }, (_iuHKolsMIqvRXzVH, _HRhJESqDjdwZmuMt) => 
-      _igZwspOTXOUDIgpJ.getUint16(_pWtFmyUVDkElICtU + _HRhJESqDjdwZmuMt * 2).toString(16)
-    ).join(':');
-    _pWtFmyUVDkElICtU += 16;
+  let address = '';
+  switch (addrType) {
+    case 1: // IPv4
+      address = Array.from(new Uint8Array(buffer.slice(offset, offset + 4))).join('.');
+      offset += 4;
+      break;
+    case 2: // Domain
+      const domainLen = view.getUint8(offset++);
+      address = new TextDecoder().decode(buffer.slice(offset, offset + domainLen));
+      offset += domainLen;
+      break;
+    case 3: // IPv6
+      const ipv6 = [];
+      for (let i = 0; i < 8; i++) {
+        ipv6.push(view.getUint16(offset).toString(16));
+        offset += 2;
+      }
+      address = ipv6.join(':');
+      break;
+    default:
+      return { hasError: true, message: 'Unsupported address type' };
   }
   
   return {
     hasError: false,
-    addressRemote: _SnVNbvZshYkvCWQB,
-    portRemote: _ytQFGPvxNQUjZTAs,
-    rawDataIndex: _pWtFmyUVDkElICtU,
-    vlessVersion: new Uint8Array(_QjfgPTDmcvdvEOSN.slice(0, 1))
+    addressRemote: address,
+    portRemote: port,
+    rawDataIndex: offset,
+    vlessVersion: new Uint8Array(buffer.slice(0, 1))
   };
 }
